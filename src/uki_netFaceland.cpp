@@ -64,7 +64,7 @@ int main(int argc,char** argv)
           {
             drawMouthContour(frame, landmarks[i]);
             clock_t end = clock();
-            lip.setLipsDiff(landmarks[i], (start-end)/CLOCKS_PER_SEC);
+            lip.setLipsDiff(landmarks[i], (end - start)/CLOCKS_PER_SEC);
           }
       }
       // Display results

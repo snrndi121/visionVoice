@@ -68,16 +68,54 @@ void Lips::setLipsDiff(vector < Point2f > &landmarks, float _timestamp, bool _is
 #endif
 struct SuspicionType
 {
-      enum SuspicionState
-      {
-        ZERO_STATE = 0 ,
-        SUSPICIOUS = 1,
-        PRIVISIONAL = 2,
-        STEADY = 3,
-      };
-      SuspicionType() {}
-      SuspicionState state = ZERO_STATE;
-      uint stampIndex = -1;
+    SuspicionType() { this-> state = make_pair(0, ZERO_STATE);};
+    void up(float _timestamp) {
+        if (this->timestamp != 0) this->timestamp =_timestamp;
+        switch (state.first) {//get state index
+            case 0 :
+              this->state.first++;
+              this->state.second = SUSPICIOUS;
+              break;
+            case 1 :
+              this->state.first++;
+              this->state.second = PRIVISIONAL;
+              break;
+            case 2 :
+              this->state.first++;
+              this->state.second = STEADY;
+              break;
+            default :
+              break;
+        }
+    }
+    void down() {
+        //discount state level
+        if (this->state.first > 0) {this->state.first--;}
+        switch (state.first) {//get state index
+            case 0 : break;//nothing excuted
+            case 1 :
+              this->state.second = ZERO_STATE;
+              break;
+            case 2 :
+              this->state.second = SUSPICIOUS;
+              break;
+            default : break;//nothing excuted
+        }
+    }
+    void clear() {
+        this->timestamp = -1;
+        this->state = make_pair(0, ZERO_STATE);
+    }
+    enum SuspicionState
+    {
+      REALEASE = -1,
+      ZERO_STATE = 0 ,
+      SUSPICIOUS = 1,
+      PRIVISIONAL = 2,
+      STEADY = 3,
+    };
+    float timestamp = 0;
+    pair < uint, SuspicionState > state;//state_id, state_name;
 };
 class ConversationPoint
 {
@@ -86,7 +124,8 @@ public :
     {
       //TALK_START,//deprecated because of duplication of TALK_ING's definition
       TALK_RESPONSE,//means "start",
-      TALK_ING,//means "talkiMAX_SUSPICION_LEVELng"
+      TALK_ING,//means "talking"
+      TALK_REST,//means "rest in talking"
       TALK_STOP,//means "listenning"
     };
     ConversationPoint() {};
@@ -116,7 +155,7 @@ private :
       * parameter 1 : suspicion level
       * parameter 2 : an index of diff_'X'Area, X = {innder, outer}
     */
-    vector < SuspicionType > suspicion_flag;//max size 3, which means each suspicious(100) -> provisional(110) -> steady(111)
+    SuspicionType suspicionStage;//max size 3, which means each suspicious(100) -> provisional(110) -> steady(111)
 };
 // setTalkState, "판별 알고리즘" (judge_state)
 /*
@@ -144,45 +183,52 @@ void ConversationPoint::filterLibs()
 void ConversationPoint::findTalkSession(bool _isInner=true)
 {
     vector < pair_float > src = _isInner? this->getLips().getInnerDiff() : this->getLips().getOuterDiff();
+    float talk_start = 0 , talk_end = 0;
+    //find talk session
     for (uint i = 0; i < src.size(); ++i)
     {
       switch (this->tstate)
       {
         case TALK_STOP :
         {
-          if (src[i].second > MAX_LIMIT_DIFF) {
-            cout << ">> 말하기 시작!" << endl;
-            this->tstate = TALK_RESPONSE;
-          }
+            if (src[i].second > MAX_LIMIT_DIFF) {
+              cout << ">> 말하기 시작!" << endl;
+              talk_start = src[i].first;
+              this->tstate = TALK_RESPONSE;
+            }
         }
         break;
         case TALK_RESPONSE :
         {
           static bool talk_on = false;
           if (src[i].second > MAX_LIMIT_DIFF) {
-            if (!talk_on) {
-              cout << ">> 말하는 중..." << endl;
-              this->tstate = TALK_ING;
-              talk_on != talk_on;
-            }
+              if (!talk_on) {
+                cout << ">> 말하는 중..." << endl;
+                this->tstate = TALK_ING;
+                talk_on != talk_on;
+              }
           }
           else {
-            bool judge = suspicion_handling(i);
-            if (judge) {
-              this->tstate = TALK_STOP;
-              cout << ">> 대답만 했습니다." << endl;
-            }
-            //judge == true -> TALK_RESPONSE change To TALK_STOP
-            //else, suspicious
+              bool judge = suspicion_handling(i);
+              //Is [ TALK_RESPONSE -> TALK_STOP ]?
+              if (judge) {
+                  cout << ">> 대답만 했습니다." << endl;
+                  talk_end = this->suspicionStage.timestamp;
+                  this->tstate = TALK_STOP;
+                  this->talkingSession.push_back(make_pair(talk_start, talk_end));
+                  this->suspicionStage.clear();
+              }
+              //else, [ TALK_RESPONSE -> TALK_REST ]?
+              this->suspicionStage.up();
           }
         }
         break;
         case TALK_ING :
         {
-          if (src[i].second < MAX_LIMIT_DIFF) {
-            suspicion_handling(i);
-          }
-          else {;}
+            if (src[i].second < MAX_LIMIT_DIFF) {
+              suspicion_handling(i);
+            }
+            else {;}
         }
         break;
         default : break;
