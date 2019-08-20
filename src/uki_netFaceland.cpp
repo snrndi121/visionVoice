@@ -11,10 +11,14 @@ using namespace std;
 using namespace cv;
 using namespace cv::face;
 
+void printMotherword(vector < MouthFeature >  src);
+//
 void saveRegion(ofstream& ofs, float _in);
 void saveRegionVector(ofstream& ofs, vector < pair_float > _src);
 void saveFilteredRegionVector(ofstream& ofs, vector < pair_float > _src);
 void saveRegionVectorAll(vector < pair_float > _inner_total, vector < pair_float > _outer_total);
+
+#define MAX_MOTHER_WORD_SAMPLE 120
 
 int main(int argc,char** argv)
 {
@@ -34,53 +38,94 @@ int main(int argc,char** argv)
     // Variable to store a video frame and its grayscale
     Mat frame, gray;
 
-    //Lips
-    Lips lip;
+    //LipsArea
+    LipsArea lip;
+    MouthShape mouthshape;
     clock_t start = clock();
     // Read a frame
     while(cam.read(frame))
     {
-      // Find face
-      vector<Rect> faces;
-      // Convert frame to grayscale because
-      // faceDetector requires grayscale image.
-      cvtColor(frame, gray, COLOR_BGR2GRAY);
+        static unsigned char sample_count = 0;
+        // Find face
+        vector<Rect> faces;
+        // Convert frame to grayscale because
+        // faceDetector requires grayscale image.
+        cvtColor(frame, gray, COLOR_BGR2GRAY);
 
-      // Detect faces
-      faceDetector.detectMultiScale(gray, faces);
+        // Detect faces
+        faceDetector.detectMultiScale(gray, faces);
 
-      // Variable for landmarks.
-      // Landmarks for one face is a vector of points
-      // There can be more than one face in the image. Hence, we
-      // use a vector of vector of points.
-      vector< vector<Point2f> > landmarks;
+        // Variable for landmarks.
+        // Landmarks for one face is a vector of points
+        // There can be more than one face in the image. Hence, we
+        // use a vector of vector of points.
+        vector< vector<Point2f> > landmarks;
 
-      // Run landmark detector
-      bool success = facemark->fit(frame,faces,landmarks);
-      if(success)
-      {
-          // If successful, render the landmarks on the face
-          for(int i = 0; i < landmarks.size(); i++)
-          {
-            drawMouthContour(frame, landmarks[i]);
-            clock_t end = clock();
-            lip.setLipsDiff(landmarks[i], (end - start)/CLOCKS_PER_SEC);
-          }
-      }
-      // Display results
-      imshow("Facial Landmark Detection", frame);
-      // Exit loop if ESC is pressed
-      if (waitKey(1) == 27) break;
+        // Run landmark detector
+        bool success = facemark->fit(frame, faces, landmarks);
+        if(success)
+        {
+            // If successful, render the landmarks on the face
+            for(int i = 0; i < landmarks.size(); i++)
+            {
+                drawMouthContour(frame, landmarks[i]);
+                clock_t end = clock();
+                //화자분리 1단계. 입 열린지 판단
+                //lip.setLipsAreaDiff((end - start)/CLOCKS_PER_SEC, landmarks[i]);
+                //화자분리 2단계. 모음 판단
+                mouthshape.push((end - start)/CLOCKS_PER_SEC, landmarks[i]);
+            }
+        }
+        // Display results
+        imshow("Facial Landmark Detection", frame);
+        // Exit loop if ESC is pressed
+        if (waitKey(1) == 27) break;
+        //Collect Data : sampling count
+        if ((sample_count++) == MAX_MOTHER_WORD_SAMPLE) {
+            cout << ">> 새로운 모음을 발음해주세요" << endl;
+            while(1) {
+                int waitInputKey = waitKey(1000);
+                if (waitInputKey == 27) {;}
+                else if(waitInputKey == 255) {;}
+                else { cout << " >> Go" << endl; sample_count = 0; break;}
+            }
+        }
     }
-    ConversationPoint cp;
-    cp.setLips(lip);
+    printMotherword(mouthshape.getMouthShapes());
+    // ConversationPoint cp;
+    // cp.setLipsArea(lip);
+    // cp.setMouthShape(mouthshape);
     //file streamx
-    ofstream ofs_inner("region_in.md");
-    saveRegionVector(ofs_inner, lip.getInnerDiff());
-    ofs_inner.close();
+    // cout << "\n### save file ### " << endl;
+    // ofstream ofs_inner("region_in.md");
+    // saveRegionVector(ofs_inner, lip.getInnerDiff());
+    // ofs_inner.close();
+    // //find talk_session
+    // cout << "\n### find talksession ###" << endl;
+    // cp.findTalkSession();
     return 0;
 }
 
+/*
+  * 모음 데이터셋 추출
+  * 48 ~ 67 번까지 특징점 추출
+*/
+void printMotherword(vector < MouthFeature >  src) {
+    cout << "\n #### printMotherword ####" << endl;
+    ofstream ofs("mother_word.csv");
+    for (uint i = 0; i != src.size(); ++i) {
+        ofs <<  i << ' ';
+        vector < Point2f > features = src[i].getPoints();
+        for (uint j = 0; j < features.size(); ++j) {
+            ofs << features[j].x << ' ' << features[j].y << ' ';
+        }
+        ofs << endl;
+    }
+    ofs.close();
+}
+/*
+  *
+*/
 #define MAX_MEAN 100
 #define ERROR_CODE -1
 #define FILTER_FRAME 30
@@ -137,17 +182,17 @@ void saveRegionVectorAll(vector < pair_float >& _inner_total, vector < pair_floa
 void saveRegionVector(ofstream& ofs, vector < pair_float > _in_total)
 {
     filterRegionVector(_in_total);
-    for (uint r_index = 1; r_index != _in_total.size(); ++r_index)
+    for (uint r_index = 0; r_index < _in_total.size(); ++r_index)
     {
-        ofs << '[' << r_index << ", " << _in_total[r_index].second << "],\n";
+        ofs << '[' << (r_index + 1) << ", " << _in_total[r_index].second << "],\n";
     }
 }
 void saveFilteredRegionVector(ofstream& ofs, vector < pair_float > _in_total)
 {
     filterRegionVector(_in_total);
-    for (uint r_index = 1; r_index != _in_total.size(); ++r_index)
+    for (uint r_index = 0; r_index < _in_total.size(); ++r_index)
     {
-        ofs << '[' << r_index << ", " << _in_total[r_index].second << "],\n";
+        ofs << '[' << (r_index + 1) << ", " << _in_total[r_index].second << "],\n";
     }
 }
 void saveRegion(ofstream& ofs, float _in)
