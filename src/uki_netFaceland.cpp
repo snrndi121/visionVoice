@@ -84,10 +84,7 @@ int main(int argc,char** argv)
         if ((sample_count++) == MAX_MOTHER_WORD_SAMPLE) {
             cout << ">> 새로운 모음을 발음해주세요" << endl;
             while(1) {
-                int waitInputKey = waitKey(1000);
-                if (waitInputKey == 27) {;}
-                else if(waitInputKey == 255) {;}
-                else { cout << " >> Go" << endl; sample_count = 0; break;}
+                if (waitKey(1) == 27) { cout << " >> Go" << endl; sample_count = 0; break;}
             }
         }
     }
