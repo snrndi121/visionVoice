@@ -15,6 +15,7 @@ using namespace std;
 using namespace cv;
 using namespace cv::face;
 
+const string IMG_INDEX_START = 0;
 const string IMG_PREFIX = "ms_";
 const string IMG_EXTENSION = ".png";
 const string IMG_PATH = "./train_data/";
@@ -76,10 +77,9 @@ void camera_in()
 void saveImg(Mat &img, IMG_TYPE img_type)
 {
     //declare
-    static int count_orgin = 0;//img_count's variables
-    static int count_inverse = 0;
-    static int count_gray = 0;
-
+    static int count_orgin = IMG_INDEX_START;//img_count's variables
+    static int count_inverse = IMG_INDEX_START;
+    static int count_gray = IMG_INDEX_START;
     //part1. set file_name : mid_fix + post_fix & save parameters
     int* file_postfix = 0;
     string file_midfix = "";
