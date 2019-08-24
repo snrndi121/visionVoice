@@ -11,8 +11,6 @@ using namespace std;
 using namespace cv;
 using namespace cv::face;
 
-//
-void makeSignalFile(const vector < pair_float > _talksession);
 void printMotherword(vector < MouthFeature >  src);
 //
 void saveRegion(ofstream& ofs, float _in);
@@ -21,6 +19,7 @@ void saveFilteredRegionVector(ofstream& ofs, vector < pair_float > _src);
 void saveRegionVectorAll(vector < pair_float > _inner_total, vector < pair_float > _outer_total);
 
 #define MAX_MOTHER_WORD_SAMPLE 120
+
 int main(int argc,char** argv)
 {
     // Load Face Detector
@@ -33,12 +32,9 @@ int main(int argc,char** argv)
     facemark->loadModel("./lbfmodel.yaml");
 
     // Set up webcam for video capture
-    VideoCapture cam("youtube_ibk_03.mp4");//VideoCapture cam(0);
+    VideoCapture cam(0);
     cam.set(CAP_PROP_FRAME_WIDTH, 640);
     cam.set(CAP_PROP_FRAME_HEIGHT, 480);
-    double fps = cam.get(CAP_PROP_FPS);
-    cout << "FPS : " << fps << endl;
-    int delay = cvRound(1000 / fps);
     // Variable to store a video frame and its grayscale
     Mat frame, gray;
 
@@ -75,7 +71,7 @@ int main(int argc,char** argv)
             {
                 drawMouthContour(frame, landmarks[i]);
                 clock_t end = clock();
-                cur_time = (end - start) * 1000 / CLOCKS_PER_SEC;
+                cur_time = (end - start)/CLOCKS_PER_SEC;
                 //화자분리 1단계. 입 열린지 판단
                 lip.setLipsAreaDiff(cur_time, landmarks[i]);
                 //화자분리 2단계. 모음 판단
@@ -85,7 +81,7 @@ int main(int argc,char** argv)
         // Display results
         imshow("Facial Landmark Detection", frame);
         // Exit loop if ESC is pressed
-        if (waitKey(delay) == 27) {  break;}
+        if (waitKey(1) == 27) {  break;}
         //Collect Data : sampling count
         // if ((sample_count++) == MAX_MOTHER_WORD_SAMPLE) {
         //     cout << ">> 새로운 모음을 발음해주세요" << endl;
@@ -106,26 +102,9 @@ int main(int argc,char** argv)
     //find talk_session
     cout << "\n### find talksession ###" << endl;
     cp.findTalkSession();
-    //print talk_session
-    makeSignalFile(cp.getTalkSession());
     return 0;
 }
 
-/*
-  * 시그널 플롯 데이터로 추출
-  * 구간 [start, end ]
-*/
-void makeSignalFile(const vector < pair_float > _talksession)
-{
-      ofstream ofs("talkSignal.md");
-      for (uint i = 0; i < _talksession.size(); ++i) {
-          float diff_time = _talksession[i].second - _talksession[i].first;
-          if (diff_time / 1000 >= 1) {//일정 대답 길이 이상이라면
-              ofs << _talksession[i].first << "," << _talksession[i].second << endl;
-          }
-      }
-      ofs.close();
-}
 /*
   * 모음 데이터셋 추출
   * 48 ~ 67 번까지 특징점 추출
