@@ -241,16 +241,17 @@ void ConversationPoint::findTalkSession(bool _isInner=true)
     //find talk session
     for (uint i = 0; i < src.size(); ++i)
     {
-        static bool talk_on = false;
-        bool isOpenLipsArea = src[i].second > MAX_LIMIT_DIFF,
-             isSteady = suspicion_handling(isOpenLipsArea, src[i].first);
+        static bool talk_on = false;//말을 하고 있었는 지 판단
+        bool isOpenLipsArea = src[i].second > MAX_LIMIT_DIFF;//평균 변화 이상일 시 입 열림으로 '의심'
+        //'의심 처리'
+        bool isSteady = suspicion_handling(isOpenLipsArea, src[i].first);
         switch (this->tstate)
         {
           case TALK_STOP :
           {
               if (isOpenLipsArea) {
-                  cout << ">> 말하기 시작!" << endl;
                   talk_start = src[i].first;
+                  cout << "\n(" << talk_start << ") : 말하기 시작" << endl;
                   this->tstate = TALK_RESPONSE;
               }
           }
@@ -259,7 +260,7 @@ void ConversationPoint::findTalkSession(bool _isInner=true)
           {
               if (isOpenLipsArea) {
                   if (!talk_on) {
-                    cout << ">> 대답하는 중..." << endl;
+                    cout << " ## 대답하는 중 ##" << endl;
                     this->tstate = TALK_ING;
                     talk_on != talk_on;
                   }
@@ -267,9 +268,9 @@ void ConversationPoint::findTalkSession(bool _isInner=true)
               else {
                   //Is [ TALK_RESPONSE -> TALK_STOP ]?
                   if (isSteady) {
-                      cout << ">> 대답만 했습니다." << endl;
                       //suspicion property
                       talk_end = this->suspicionStage.timestamp;
+                      cout << "(" << talk_end << ") : 대답만 했습니다." << endl;
                       this->suspicionStage.clear();
                       //talk property
                       this->tstate = TALK_STOP;
@@ -284,15 +285,15 @@ void ConversationPoint::findTalkSession(bool _isInner=true)
           {
               if (isOpenLipsArea) {
                   if (talk_on) {
-                    cout << ">> 말하는 중..." << endl;
+                    cout << " ## 말하는 중 ## " << endl;
                     talk_on != talk_on;
                   }
               }
               else {
                   if (isSteady) {
-                      cout << ">> 말을 멈추고 듣고 있습니다." << endl;
                       //suspicion property
                       talk_end = this->suspicionStage.timestamp;
+                      cout << "(" << talk_end << ") : 말하기 종료" << endl;
                       this->suspicionStage.clear();
                       //talk property
                       this->tstate = TALK_STOP;
@@ -305,6 +306,7 @@ void ConversationPoint::findTalkSession(bool _isInner=true)
           default : break;
         }
     }
+    cout << "(" << src[src.size() - 1].first << ") : 대화를 마칩니다." << endl;
 }
 //의심단계와 관련된 속성들을 처리하고, STEADY 상태면 true 반환
 bool ConversationPoint::suspicion_handling(bool _isOpenLipsArea, uint _timestamp)
@@ -336,14 +338,14 @@ bool ConversationPoint::suspicion_handling(bool _isOpenLipsArea, uint _timestamp
             this->suspicionStage.down();
         }// if (curTalkstate == TALK_RESPONSE) { this->suspicionStage.down();} else if (curTalkstate == TALK_ING) { this->suspicionStage.down();}
         else {
-            // this->suspicionStage.up();
+            // this->suspicionStage.up(); => unnecessarry
         }
     } else {
         if (curTalkstate != TALK_STOP) {
             this->suspicionStage.up(_timestamp);
         }// if (curTalkstate == TALK_RESPONSE) {this->suspicionStage.up();}else if (curTalkstate == TALK_ING) {this->suspicionStage.up();}
         else {
-            // this->suspicionStage.down();
+            // this->suspicionStage.down(); => unnecessarry
         }
     }
     //Part3. check if the statge can be a next stage
