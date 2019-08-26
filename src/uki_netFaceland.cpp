@@ -1,7 +1,7 @@
 #include <opencv2/opencv.hpp>
 #include <opencv2/face.hpp>
 #include "drawLandmarks.hpp"
-#include "seperateVoice.hpp"
+#include "visionVoice.hpp"
 
 #include <fstream>
 #include <time.h>
@@ -13,7 +13,7 @@ using namespace cv::face;
 
 //
 void makeSignalFile(const vector < pair_float > _talksession);
-void printMotherword(vector < MouthFeature >  src);
+// void printMotherword(vector < MouthFeature >  src);
 //
 void saveRegion(ofstream& ofs, float _in);
 void saveRegionVector(ofstream& ofs, vector < pair_float > _src);
@@ -21,92 +21,83 @@ void saveFilteredRegionVector(ofstream& ofs, vector < pair_float > _src);
 void saveRegionVectorAll(vector < pair_float > _inner_total, vector < pair_float > _outer_total);
 
 #define MAX_MOTHER_WORD_SAMPLE 120
-int main(int argc,char** argv)
+#define MIN_TALK_RESPONSE 2
+int main(int argc, char** argv)
 {
-    // Load Face Detector
+    if (argc < 2) {
+        cout << "video file not found" << endl;
+        return -1;
+    }
+    // 얼굴 검출기 로드
     CascadeClassifier faceDetector("/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_alt2.xml");
-
-    // Create an instance of Facemark
+    // 얼굴 랜드마크 변수 생성
     Ptr<Facemark> facemark = FacemarkLBF::create();
-
-    // Load landmark detector
+    // 얼굴 랜드마크에 lbd 모델 로드
     facemark->loadModel("./lbfmodel.yaml");
-
-    // Set up webcam for video capture
-    VideoCapture cam("youtube_ibk_03.mp4");//VideoCapture cam(0);
+    // facemark->loadModel("./AAM.yaml");
+    // 출력할 비디오 준비
+    VideoCapture cam(argv[1]);
+    // 비디오 관련 변수 설정
     cam.set(CAP_PROP_FRAME_WIDTH, 640);
     cam.set(CAP_PROP_FRAME_HEIGHT, 480);
     double fps = cam.get(CAP_PROP_FPS);
     cout << "FPS : " << fps << endl;
     int delay = cvRound(1000 / fps);
-    // Variable to store a video frame and its grayscale
+    // 비디오 프레임 저장 변수
     Mat frame, gray;
-
-    //LipsArea
+    //입술 객체, 입모양 객체 선언
     LipsArea lip;
-    MouthShape mouthshape;
-    clock_t start = clock();
-    // Read a frame
+    MouthTokenList mouth;
+    clock_t start = clock();//동영상 기준 시작 시간
+    //카메라 데이터 입력
     while(cam.read(frame))
     {
         static unsigned char sample_count = 0;
         float cur_time = 0;
-        // Find face
+        // 얼굴 영역 저장될 변수 선언
         vector<Rect> faces;
-        // Convert frame to grayscale because
-        // faceDetector requires grayscale image.
+        // 현재 비디오 프레임을 gray로 변환함
         cvtColor(frame, gray, COLOR_BGR2GRAY);
-
-        // Detect faces
+        // 얼굴 탐지
         faceDetector.detectMultiScale(gray, faces);
-
-        // Variable for landmarks.
-        // Landmarks for one face is a vector of points
-        // There can be more than one face in the image. Hence, we
-        // use a vector of vector of points.
+        // 랜드마크가 저장될 공간
         vector< vector<Point2f> > landmarks;
-
-        // Run landmark detector
+        // 랜드마크 탐색기 수행
         bool success = facemark->fit(frame, faces, landmarks);
-        if(success)
-        {
-            // If successful, render the landmarks on the face
-            for(int i = 0; i < landmarks.size(); i++)
-            {
+        if(success) {
+            // 얼굴 랜드마크 내부에서 현재 시간과 입술 안쪽 계산해서
+            // LipsArea 객체 정보 전달
+            for(int i = 0; i < landmarks.size(); i++) {
+                //입술 영역 그리기
                 drawMouthContour(frame, landmarks[i]);
                 clock_t end = clock();
-                cur_time = (end - start) * 1000 / CLOCKS_PER_SEC;
+                // cur_time = (end - start) * 1000 / CLOCKS_PER_SEC;
+                cur_time = (end * 1000) / CLOCKS_PER_SEC;
                 //화자분리 1단계. 입 열린지 판단
                 lip.setLipsAreaDiff(cur_time, landmarks[i]);
                 //화자분리 2단계. 모음 판단
                 // mouthshape.push((end - start)/CLOCKS_PER_SEC, landmarks[i]);
             }
         }
-        // Display results
+        // 출력 : 종합 처리된 프레임 = 현재 화면 + 입술 외곽선
         imshow("Facial Landmark Detection", frame);
         // Exit loop if ESC is pressed
         if (waitKey(delay) == 27) {  break;}
-        //Collect Data : sampling count
-        // if ((sample_count++) == MAX_MOTHER_WORD_SAMPLE) {
-        //     cout << ">> 새로운 모음을 발음해주세요" << endl;
-        //     while(1) {
-        //         if (waitKey(1) == 27) { cout << " >> Go" << endl; sample_count = 0; break;}
-        //     }
-        // }
     }
-    // printMotherword(mouthshape.getMouthShapes());
+    //대화 객체 선언
     ConversationPoint cp;
-    cp.setLipsArea(lip);
-    cp.setMouthShape(mouthshape);
-    //file streamx
-    cout << "\n### save file ### " << endl;
-    ofstream ofs_inner("region_in.md");
-    saveRegionVector(ofs_inner, lip.getInnerDiff());
-    ofs_inner.close();
-    //find talk_session
-    cout << "\n### find talksession ###" << endl;
+    cp.setLipsArea(lip);//인식된 입술 객체 -> '대화' 객체로 할당
+    // cp.setMouthShape(mouthshape);
+    //출력 : 입술 객체 포인트
+    // cout << "\n### save file ### " << endl;
+    // ofstream ofs_inner("region_in.md");
+    // saveRegionVector(ofs_inner, lip.getInnerDiff());
+    // ofs_inner.close();
+    //발화 시점 탐색
+    cout << "\n### find talksession start ###" << endl;
     cp.findTalkSession();
-    //print talk_session
+    cout << "\n### find talksession end ###" << endl;
+    //출력 : 발화 시점 출력
     makeSignalFile(cp.getTalkSession());
     return 0;
 }
@@ -120,7 +111,7 @@ void makeSignalFile(const vector < pair_float > _talksession)
       ofstream ofs("talkSignal.md");
       for (uint i = 0; i < _talksession.size(); ++i) {
           float diff_time = _talksession[i].second - _talksession[i].first;
-          if (diff_time / 1000 >= 1) {//일정 대답 길이 이상이라면
+          if (diff_time / 1000 >= MIN_TALK_RESPONSE) {//일정 대답 길이 이상이라면
               ofs << _talksession[i].first << "," << _talksession[i].second << endl;
           }
       }
@@ -130,19 +121,19 @@ void makeSignalFile(const vector < pair_float > _talksession)
   * 모음 데이터셋 추출
   * 48 ~ 67 번까지 특징점 추출
 */
-void printMotherword(vector < MouthFeature >  src) {
-    cout << "\n #### printMotherword ####" << endl;
-    ofstream ofs("mother_word.csv");
-    for (uint i = 0; i != src.size(); ++i) {
-        ofs <<  i << ' ';
-        vector < Point2f > features = src[i].getPoints();
-        for (uint j = 0; j < features.size(); ++j) {
-            ofs << features[j].x << ' ' << features[j].y << ' ';
-        }
-        ofs << endl;
-    }
-    ofs.close();
-}
+// void printMotherword(vector < MouthFeature >  src) {
+//     cout << "\n #### printMotherword ####" << endl;
+//     ofstream ofs("mother_word.csv");
+//     for (uint i = 0; i != src.size(); ++i) {
+//         ofs <<  i << ' ';
+//         vector < Point2f > features = src[i].getPoints();
+//         for (uint j = 0; j < features.size(); ++j) {
+//             ofs << features[j].x << ' ' << features[j].y << ' ';
+//         }
+//         ofs << endl;
+//     }
+//     ofs.close();
+// }
 /*
   *
 */

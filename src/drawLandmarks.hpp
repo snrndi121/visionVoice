@@ -45,6 +45,7 @@ void drawPolyline
     polylines(im, points, isClosed, COLOR_WHITE, 1, 16);
 
 }
+//전체 랜드마크 찍기
 void drawLandmarks(Mat &im, vector<Point2f> &landmarks)
 {
     // Draw face for the 68-point model.
@@ -93,14 +94,14 @@ void drawNetLandmarks(Mat &im, vector<Point2f> &landmarks)
     }
 }
 //uki408
+//입술 외곽선 랜드마크간에 연결
 void drawMouthContour(Mat &im, vector<Point2f> &landmarks)
 {
-    if(landmarks.size() == 68) {
-        drawPolyline(im, landmarks, 48, 59, true);    // Outer lip
-        drawPolyline(im, landmarks, 60, 67, true);    // Inner lip
-        //calculateHeight
+    if(landmarks.size() == 68) { //68개 랜드마크가 정상적으로 인식될 시
+        drawPolyline(im, landmarks, 48, 59, true);// 입술 바깥선 (Outer lip)
+        drawPolyline(im, landmarks, 60, 67, true);// 입술 안쪽선 (Inner lip)
     } else {
-        drawLandmarks(im, landmarks);
+        drawLandmarks(im, landmarks); //인식된 랜드마크까지 찍기
     }
 }
 #endif // _renderFace_H_
