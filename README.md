@@ -10,4 +10,5 @@ seperate voice from vision
 (6) 캐글-입 데이터(사용은 안함)   
 - https://sites.google.com/site/achrafbenhamadou/-datasets/miracl-vc1   
 - https://www.kaggle.com/apoorvwatsky/miraclvc1   
-(7) Desnet 설명 : https://hoya012.github.io/blog/DenseNet-Tutorial-1/   
+
+(7) Desnet 설명 : https://hoya012.github.io/blog/DenseNet-Tutorial-1/ 
