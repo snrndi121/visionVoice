@@ -1,0 +1,18 @@
+<resources>
+    <string name="app_name">v-voice</string>
+    <!-- MainActivity -->
+    <string name="found_custom">님이 오셨습니다!!!</string>
+    <string name="not_found_custom">고객님을 기다려봅니다...</string>
+    <string name="server_connected">server connected</string>
+    <string name="server_not_connected">"server not connected"</string>
+    <!-- RecordActivity -->
+    <string name="sales_start">상담을 시작합니다.</string>
+    <string name="sales_on">상담 중입니다..</string>
+    <string name="sales_end">상담을 종료합니다..</string>
+    <string name="sales_next_round">상담 결과를 계산중...</string>
+    <string name="err_msg">에로에요</string>
+    <!-- VisionResActivity -->
+    <string name="result_vision">고객님의 음성을 분리하였습니다.</string>
+    <string name="result_operation_not_send">서버로 보내지는 않습니다.</string>
+    <string name="result_button_pass">상담 이력 저장</string>
+</resources>
