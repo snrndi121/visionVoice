@@ -3,6 +3,7 @@ seperate voice from vision
 
 # 결과
 - 수상 : 이화여자대학교장상
+- 팀 : VISION VOICE (권성욱 + 오승환)
 - 날짜 : 19. 9. 3. 화
 - 주관 : 국민은행
 - 주최 : 금융감독원 + 이화여자대학교
