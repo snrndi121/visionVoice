@@ -5,7 +5,7 @@ seperate voice from vision
 - 수상 : 이화여자대학교장상
 - 팀 : VISION VOICE (권성욱 + 오승환)
 - 날짜 : 19. 9. 3. 화
-- 대회 : AI 챌린지
+- 대회 : Future Finance + AI 챌린지
 - 주관 : 국민은행
 - 주최 : 금융감독원 + 이화여자대학교
 
