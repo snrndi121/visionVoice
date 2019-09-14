@@ -1,5 +1,5 @@
 # visionVoice
-seperate voice from vision
+[이화여대총장상] seperate voice from vision
 
 # 결과
 - 수상 : 이화여자대학교장상
