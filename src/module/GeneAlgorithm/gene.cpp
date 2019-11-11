@@ -1,6 +1,7 @@
 #include <iostream>
 #include <fstream>
 #include <vector>
+#include <map>
 #include <algorithm>
 
 using namespace std;
@@ -26,25 +27,28 @@ typedef vector < pair_str > vec_pair_str;
 */
 vec_str full_digit;//GO
 vector < vec_str > target_digit;//Gx
+map < char, vec_uint > markerMemory;//Gx'elements matrix
 vector < vec_pair_str > search_result;
 /*
   * Function
 */
 void input_gene();
 void process_gene();
-void gene_scoring(string);
-void how_sequential(string, string);
+float gene_scoring(string);
+void how_sequential(string&, string&);
 void output_gene();
 void print_global_constant();
 int main()
 {
     input_gene();
     process_gene();
+    print_global_constant();
     output_gene();
     return 0;
 }
 void input_gene()
 {
+    cout << "\n# function_input_gene is on # \n";
     //파일 입력
     ifstream ifs("input.md");
     if (ifs.fail()) {
@@ -70,6 +74,11 @@ void input_gene()
 }
 void process_gene()
 {
+    cout << "\n# function_process_gene is on # \n";
+    //unit_test
+    for (uint i = 0; i < target_digit.size(); ++i)
+        for (uint j = 0; j < target_digit[i].size(); ++j)
+          how_sequential(full_digit[0], target_digit[i][j]);
     //초기 세대 생성
     //자식세대 생성
     //룰렛 휠
@@ -118,14 +127,17 @@ void process_gene()
     */
 }
 //유전알고리즘-스코어링
-void gene_scoring(string _digit)
+float gene_scoring(string _digit)
 {
+    cout << "\n# function_gene_scoring is on # \n";
     /*
       * Score(Gx) = how_sequential(x) * found_location(x),
       * how_sequential(Gx) = correct_word(a) * 8 - wrong_word(n - a) * 2,
       * found_location(Gx) = n / (found_index - current_search_index),
       * n : 염색체 길이, a : GO에서 n 단위 탐색이 Gx와 일치한 문자열 개수
+      return how_sequential(_digit) * found_location(_digit);
     */
+    return 0;
 }
 //탐색
 /*
@@ -151,10 +163,12 @@ void gene_scoring(string _digit)
   *
   * 점수 환산 방식 (임의)
   * Gx digit 발견시 : + 5
-  * 거리에 따른 감산 : - 1 %
+  * Gx digit 공백시 : - 1
+  * 거리에 따른 감산 : - 0.1 %
 */
 void how_sequential(string& _full_digit, string& _target_digit)
 {
+    cout << "\n > function_how_serquential is on.\n";
     //G0 내에서 GX 토큰 간의 일치도
     vec_uint bestFitIndexes = {0};//가장 최적합의 인덱스
     uint matchScore = 0;//매칭 점수
@@ -162,20 +176,30 @@ void how_sequential(string& _full_digit, string& _target_digit)
         cerr << "how_sequential() has a no valid full digit." << endl;
         return ;
     }
-    //GX 사이즈 단위로 G0 조회
+    //G0 내부의 문자열 마킹
     const int digit_size = _target_digit.size();
-    //string::find()
+    // map < char, vec_uint > markerMemory;
     for (uint i = 0; i < _target_digit.size(); ++i) {
-        size_t found = _full_digit.find(_target_digit[i]);
+        vec_uint markerList;
+        size_t m = _full_digit.find(_target_digit[i]);
+        while (m != string::npos) {
+            markerList.push_back(m);
+            m = _full_digit.find(_target_digit[i], m + 1);
+        }
+        if (markerMemory.find(_target_digit[i]) == markerMemory.end()) {
+            markerMemory.insert(make_pair(_target_digit[i], markerList));
+        }
     }
-
+    //마킹된 정보 조합
 }
 void output_gene()
 {
+    cout << "\n# function_output_gene is on # \n";
   ;
 }
 void print_global_constant()
 {
+    cout << "\n# function_print_global_constant is on # \n";
     cout << endl << " >> Input content " << endl;
     for (uint i = 0; i < full_digit.size(); ++i) {
         cout << ">> G0 : " << full_digit[i] << endl;
@@ -183,10 +207,19 @@ void print_global_constant()
             cout << " >> Gx : " << target_digit[i][j] << endl;
         }
     }
+    cout << endl << " >> Input matrix " << endl;
+    for (map < char, vec_uint >::iterator it = markerMemory.begin(); it != markerMemory.end(); ++it) {
+        char key = it->first;
+        cout << key << " has indexes :";
+        for (vec_uint::iterator it2 = markerMemory[key].begin(); it2 != markerMemory[key].end(); ++it2) {
+            cout << *it2 << " ";
+        }
+        cout << endl;
+    }
     cout << endl << " >> Searching Result" << endl;
     for (uint i = 0; i < search_result.size(); ++i) {
         for (uint j = 0; j < search_result[i].size(); ++j) {
-            cout << search_result[i][j].first << "->" << search_result[i][j].second << endl;
+            cout << search_result[i][j].first <<"->" << search_result[i][j].second << endl;
         }
     }
 }
