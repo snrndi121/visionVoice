@@ -2,32 +2,27 @@
 #include <fstream>
 #include <vector>
 #include <map>
-#include <algorithm>
+#include "userType.hpp"
 
 using namespace std;
 /*
   * Defnition
 */
 //def-gene
-#ifndef __GENE_CONSTANT
-#define __GENE_CONSTANT
+#ifndef _GENE_CONSTANT_
+#define _GENE_CONSTANT_
 
 #define MAX_GENE_GENERATION 4
 #define GENE_MUTATION 0.1
 #define MAX_GENE_CYCLE 100
 
 #endif
-//def-type
-typedef vector < string > vec_str;
-typedef vector < uint > vec_uint;
-typedef pair < string, string > pair_str;
-typedef vector < pair_str > vec_pair_str;
 /*
   * Variation
 */
-vec_str full_digit;//GO
-vector < vec_str > target_digit;//Gx
-map < char, vec_uint > markerMemory;//Gx'elements matrix
+vec_str full_digit;//GO(전체 문자)
+vector < vec_str > target_digit;//Gx(타겟 문자)
+map < char, vec_uint > markerMemory;//G0의 각 문자 분포도(markerMemory)
 vector < vec_pair_str > search_result;
 /*
   * Function
@@ -72,15 +67,27 @@ void input_gene()
         target_digit.push_back(in_vec_str);//Gx 설정
     }
 }
+//하나의 G0에 대하여 다수의 GX의 탐색(1:M)
 void process_gene()
 {
     cout << "\n# function_process_gene is on # \n";
-    //unit_test
-    for (uint i = 0; i < target_digit.size(); ++i)
+    //지역 변수 선언
+    List < TalkTree > firstGeneration;
+    //패턴 트리 생성
+    for (uint i = 0; i < target_digit.size(); ++i)//이미지로부터 인식 입모양----(치환)---> {문자열 리스트}
         for (uint j = 0; j < target_digit[i].size(); ++j)
-          how_sequential(full_digit[0], target_digit[i][j]);
-    //초기 세대 생성
-    //자식세대 생성
+            how_sequential(full_digit[0], target_digit[i][j]);//
+    //초기 패턴 트리 스코어링
+    for (List < TalkTree >::iterator it = firstGeneration.begin(); it != firstGeneration.end(); ++it) {
+        it->searchDFS();
+        gene_scoring(it->getPath());
+    }
+    /*
+      * 초기 세대 생성
+      *
+      * 찾고자하는 타겟(Gx)를 실제 G0에서 찾은 제일 유사한 녀석을 초기 세대로 설정
+    */
+    //형제세대 생성
     //룰렛 휠
     /*
     vec_pair_str eachResult;
@@ -90,11 +97,12 @@ void process_gene()
         boolean continueCycle = true;
 
         //각 Gx에 대한 형제 생성
+        //pair < string, float >가 의미하는 것은, (형성된 문자열 패턴 형태, 스코어)
         vector < pair < string, float > > GxParent = FirstGeneration(target_digit[i]);//second 값은 NULL
 
         //GxParent의 자식 세대 생성
         while (continueCycle) {
-            vector < pairt < string, float > > GxChild;//자식 세대 선언
+            vector < pair < string, float > > GxChild;//자식 세대 선언
             //parent = 4, child = 0
 
             //part1. 스코어링 및 룰렛휠
@@ -116,7 +124,7 @@ void process_gene()
             //part5. 다음 부모 세대 재정의
             GxParent.clear();
             GxParent = GxChild;
-            //parent = 2, child = 2
+            //parent = 0, child = 2
 
             //part6. base 확인
             continueCycle = (gen_count++ < MAX_GENE_CYCLE);//res.second < ?;어느 정도가 bestFitScore 인지 모름.
@@ -127,15 +135,55 @@ void process_gene()
     */
 }
 //유전알고리즘-스코어링
+/*
+  * G0의 각 문자 분포도(markerMemory)에 의한 점수 계산을 할 것임
+  * 계산 요소 : 각 인덱스간의 거리 & 구성 노드 개수
+  * (예시)
+  * 타겟 : 134
+  * 인덱스 위치 : 1-> 4, 3 -> 10, 4 -> 15
+  * 식 = 발견 노드수(3) * 5 - 거리 가중치 {(10-6) * 0.0.1 + (15-10) * 0.01}
+       = 15 -(0.04 + 0.05) = 14.91
+       => 14.91 * 발견된 위치에 따른 가중치(found_location(x))
+*/
 float gene_scoring(string _digit)
 {
     cout << "\n# function_gene_scoring is on # \n";
+    /* ver1.2
+      * ver1.0의 found_location(x)의 의미를 다시 복귀
+      * Score(Gx) = how_sequential(x) * found_location(x),
+      * how_sequential(x) = correct_word(a) * 5 - sigma{distance(i, i+1) * 0.01, i = 0, 1, 2, k}
+      * found_location(Gx) = n / (found_index - current_search_index),
+      *
+      * 변경된 이유
+      * 전체 문자열(G0)에서 점수가 유사하게 나타나는 문자열이 등장할 것이기때문에 이에 따른 가중치를
+        크게 주지 않으면 최적합에 이를 수 없을 것임.
+    */
+    /*
+      * ver1.1
+      * Score(x) = correct_word(a) * 5 - sigma{distance(i, i+1) * 0.01, i = 0, 1, 2, k}
+      * 가점 방식 : 찾는 문자열(노드)의 수에 따라서 5점씩 가점
+      * 가점 방식 : 찾는 문자열 간 거리에 따라서 0.01%씩 감점
+      *
+      * 참고
+      * part1. 감점 방식 = 서로 인접한 경우를 더 최적(best fit)으로 판정할 것임
+      * 3개의 노드가 있을 때
+      * case1) 1.....3.....2......5 : 균등하게 분포된 경우
+      * case2) 1.3.2..............5 : 서로 간에 인전한 경우
+      *
+      * 따라서, 전체 1 ~ 5의 거리는 같을 지라도 얼마나 인접한 지에 따라서 감점을 할 계획.
+      * (Todo) 물론, 이 알고리즘에 있어서 보완책이 필요함
+      *
+      * 생각하게 된 계기
+      *  - 탐색 방법을 고려할 때, 이진탐색을 고려하였음. 다음 노드를 선택함에 있어 조부모와 손자 간의
+          중앙값에 가까울 수록 최적이라는 결론을 초기에는 고안하였으나, 감점 산정 방식에 따라서 최적의
+          해를 찾지 못 하게 될 것이라고 판단함. 우의 "1325"의 경우, case1이 최적이라고 판단할 것을
+          우려함.
+    */
     /*
       * Score(Gx) = how_sequential(x) * found_location(x),
       * how_sequential(Gx) = correct_word(a) * 8 - wrong_word(n - a) * 2,
       * found_location(Gx) = n / (found_index - current_search_index),
       * n : 염색체 길이, a : GO에서 n 단위 탐색이 Gx와 일치한 문자열 개수
-      return how_sequential(_digit) * found_location(_digit);
     */
     return 0;
 }
@@ -176,21 +224,22 @@ void how_sequential(string& _full_digit, string& _target_digit)
         cerr << "how_sequential() has a no valid full digit." << endl;
         return ;
     }
-    //G0 내부의 문자열 마킹
+    //G0 내부의 문자 인덱스 정보 마킹
     const int digit_size = _target_digit.size();
-    // map < char, vec_uint > markerMemory;
     for (uint i = 0; i < _target_digit.size(); ++i) {
+        //중복 여부 확인->문자 인덱스 정보
+        if (markerMemory.find(_target_digit[i]) == markerMemory.end())
+            markerMemory.insert(make_pair(_target_digit[i], markerList));
+        //G0 내부 문자 인덱스 정보 탐색&추가
         vec_uint markerList;
         size_t m = _full_digit.find(_target_digit[i]);
         while (m != string::npos) {
             markerList.push_back(m);
             m = _full_digit.find(_target_digit[i], m + 1);
         }
-        if (markerMemory.find(_target_digit[i]) == markerMemory.end()) {
-            markerMemory.insert(make_pair(_target_digit[i], markerList));
-        }
     }
-    //마킹된 정보 조합
+    //마킹 트리 생성
+
 }
 void output_gene()
 {
