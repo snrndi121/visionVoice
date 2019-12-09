@@ -1,5 +1,5 @@
-#ifndef _motherword_H_
-#define _motherword_H_
+#ifndef _MOTHER_WORD_H_
+#define _MOTHER_WORD_H_
 
 using namespace std;
 
@@ -34,26 +34,66 @@ enum StepMother_Word {
 //입술 모양 : string -> hex
 struct cvtWordType {
     cvtWordType() {}
+    cvtWordType(char c) {
+        switch(c) {
+            case SHAPE_NONE : {mother_word = SHAPE_NONE; break;}
+            case SHAPE_A : {mother_word = SHAPE_A;break;}
+            case SHAPE_EU : {mother_word = SHAPE_EU;break;}
+            case SHAPE_O : {mother_word = SHAPE_O;break;}
+            case SHAPE_U : {mother_word = SHAPE_U;break;}
+            case SHAPE_UI : {mother_word = SHAPE_UI;break;}
+            case SHAPE_I : {mother_word = SHAPE_I;break;}
+            case SHAPE_E : {mother_word = SHAPE_E;break;}
+            default :
+              cerr << "struct cvtWordType.construction faild. The character can't be matched. or it's sort of stepmother.\n";
+              break;
+        }
+    }
+    //method
     const vector < string > stepTOMother = {"61", "62", "37", "42", "67", "31", "46"};
     char cvtStringToHex(string s) {
-        if (s == "0") {mw = SHAPE_NONE;}
-        else if (s == "ㅏ") { mw = SHAPE_A;}
-        else if (s == "ㅓ") { mw = SHAPE_EU;}
-        else if (s == "ㅗ" || s == "ㅛ") { mw = SHAPE_O;}
-        else if (s == "ㅜ" || s == "ㅠ") { mw = SHAPE_U;}
-        else if (s == "ㅡ" || s == "ㅢ") { mw = SHAPE_UI;}
-        else if (s == "ㅣ") { mw = SHAPE_I;}
-        else if (s == "ㅔ" || s == "ㅐ") { mw = SHAPE_E;}
+        char res = '*';
+        if (s == "0") {res = SHAPE_NONE;}
+        else if (s == "ㅏ") { res = SHAPE_A;}
+        else if (s == "ㅓ") { res = SHAPE_EU;}
+        else if (s == "ㅗ" || s == "ㅛ") { res = SHAPE_O;}
+        else if (s == "ㅜ" || s == "ㅠ") { res = SHAPE_U;}
+        else if (s == "ㅡ" || s == "ㅢ") { res = SHAPE_UI;}
+        else if (s == "ㅣ") { res = SHAPE_I;}
+        else if (s == "ㅔ" || s == "ㅐ") { res = SHAPE_E;}
+        else if (s == "ㅑ" || "61") { res = SHAPE_IA;}
+        else if (s == "ㅕ" || "62") { res = SHAPE_IEU;}
+        else if (s == "ㅚ" || s == "ㅙ" || s == "ㅞ" || "37") { res = SHAPE_OE;}
+        else if (s == "ㅝ" || "42") { res = SHAPE_UEU;}
+        else if (s == "ㅒ" || "67") { res = SHAPE_IE;}
+        else if (s == "ㅘ" || "31") { res = SHAPE_OA;}
+        else if (s == "ㅟ" || "46") { res = SHAPE_WE;}
+        else if (s == "F") { res = NOT_FOUND;}
+        else { cout << ">> convert failed" << endl;}
+        return res;
+    }
+    /*
+    char cvtStringToHex(string s) {
+        char temp_mw = mother_word, temp_smw = stepmother_word;
+        if (s == "0") {mother_word = SHAPE_NONE;}
+        else if (s == "ㅏ") { mother_word = SHAPE_A;}
+        else if (s == "ㅓ") { mother_word = SHAPE_EU;}
+        else if (s == "ㅗ" || s == "ㅛ") { mother_word = SHAPE_O;}
+        else if (s == "ㅜ" || s == "ㅠ") { mother_word = SHAPE_U;}
+        else if (s == "ㅡ" || s == "ㅢ") { mother_word = SHAPE_UI;}
+        else if (s == "ㅣ") { mother_word = SHAPE_I;}
+        else if (s == "ㅔ" || s == "ㅐ") { mother_word = SHAPE_E;}
         else if (s == "ㅑ" || "61") { smw = SHAPE_IA;}
-        else if (s == "ㅕ" || "62") { smw = SHAPE_IEU;}
-        else if (s == "ㅚ" || s == "ㅙ" || s == "ㅞ" || "37") { smw = SHAPE_OE;}
-        else if (s == "ㅝ" || "42") { smw = SHAPE_UEU;}
-        else if (s == "ㅒ" || "67") { smw = SHAPE_IE;}
-        else if (s == "ㅘ" || "31") { smw = SHAPE_OA;}
-        else if (s == "ㅟ" || "46") { smw = SHAPE_WE;}
-        else if (s == "F") { smw = NOT_FOUND;}
+        else if (s == "ㅕ" || "62") { stepmother_word = SHAPE_IEU;}
+        else if (s == "ㅚ" || s == "ㅙ" || s == "ㅞ" || "37") { stepmother_word = SHAPE_OE;}
+        else if (s == "ㅝ" || "42") { stepmother_word = SHAPE_UEU;}
+        else if (s == "ㅒ" || "67") { stepmother_word = SHAPE_IE;}
+        else if (s == "ㅘ" || "31") { stepmother_word = SHAPE_OA;}
+        else if (s == "ㅟ" || "46") { stepmother_word = SHAPE_WE;}
+        else if (s == "F") { stepmother_word = NOT_FOUND;}
         else { cout << ">> convert failed" << endl;}
     }
+    */
     //Mother_Word로만 구성된 String에서 StepMother_Word로 변환 가능한 수를 찾아냄.
     vector < vector < int > > findStepFromMother(string _pure_mother) {
         cout << "#findStepFromMother start #" << endl;
@@ -80,7 +120,7 @@ struct cvtWordType {
     //Mother_Word 타입을 가능한 Step_Mother로 변환함
     //parameter 1 : Mother_word -> 16진수 변환된 스트림
     //parameter 2 : Mother_word 내에서 동시에 인식할 StepMother_Word 개수
-    vector < string > cvtMotherToStep(string s, int allowed_duplication) {
+    vector < string > cvtMotherToStep(string s, uint allowed_duplication) {
           vector < string > new_gen;//변환된 새 형태
           srand((unsigned)time(NULL));
           vector < vector < int > > stepCountMatrix = findStepFromMother(s);
@@ -89,10 +129,10 @@ struct cvtWordType {
                 string temp_str = s;
                 bool* dup_pos = new bool[stepCountMatrix[i].size()];
                 //랜던 인덱스 중복값 체크를 위한 변수, dup_pos
-                for (int i = 0; i < stepCountMatrix[i].size(); ++i ) { dup_pos[i] = false;}
+                for (uint i = 0; i < stepCountMatrix[i].size(); ++i ) { dup_pos[i] = false;}
                 //변환 가능한 범위에서 무작위로 위치에 대한 변환 과정
-                for (int k = 0; k < allowed_duplication; ++k) {
-                    int j = rand() % stepCountMatrix[i].size();
+                for (uint k = 0; k < allowed_duplication; ++k) {
+                    uint j = rand() % stepCountMatrix[i].size();
                     dup_pos[j] = true;
                     //유효한 무작위인지 판단
                     if (!dup_pos[j]) {
@@ -108,8 +148,8 @@ struct cvtWordType {
           return new_gen;
     }
     void getClear() {
-        Mother_Word mw = SHAPE_NONE;
-        StepMother_Word smw = NOT_FOUND;
+        Mother_Word mother_word = SHAPE_NONE;
+        StepMother_Word stepmother_word = NOT_FOUND;
     }
     //스코어링에 상용됨
     //first : mother word 수
@@ -127,11 +167,12 @@ struct cvtWordType {
           return make_pair(mother_count, step_count);
     }
     char getNumber() {
-        if (mw!= SHAPE_NONE) { return mw;}
-        else if (smw != NOT_FOUND) { return smw;}
+        if (mother_word!= SHAPE_NONE) { return mother_word;}
+        else if (stepmother_word != NOT_FOUND) { return stepmother_word;}
         return ERR_CVT_CODE;
     }
-    Mother_Word mw = SHAPE_NONE;
-    StepMother_Word smw = NOT_FOUND;
+    char c;
+    Mother_Word mother_word = SHAPE_NONE;
+    StepMother_Word stepmother_word = NOT_FOUND;
 };
 #endif

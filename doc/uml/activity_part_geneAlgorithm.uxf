@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<diagram program="umlet" version="14.2">
+  <zoom_level>9</zoom_level>
+  <element>
+    <id>UMLState</id>
+    <coordinates>
+      <x>684</x>
+      <y>135</y>
+      <w>234</w>
+      <h>36</h>
+    </coordinates>
+    <panel_attributes>process_gene()
+bg=red</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>792</x>
+      <y>162</y>
+      <w>27</w>
+      <h>63</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>10.0;50.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLState</id>
+    <coordinates>
+      <x>711</x>
+      <y>207</y>
+      <w>171</w>
+      <h>36</h>
+    </coordinates>
+    <panel_attributes>markingMemory
+bg=blue</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLObject</id>
+    <coordinates>
+      <x>540</x>
+      <y>279</y>
+      <w>558</w>
+      <h>414</h>
+    </coordinates>
+    <panel_attributes>유전 알고리즘
+valign=top</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>144</x>
+      <y>297</y>
+      <w>315</w>
+      <h>540</h>
+    </coordinates>
+    <panel_attributes>//변수 정보 
+*markingMemory : 문자열 내 문자 인덱스 정보
+bg=orange</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLState</id>
+    <coordinates>
+      <x>693</x>
+      <y>315</y>
+      <w>225</w>
+      <h>36</h>
+    </coordinates>
+    <panel_attributes>GxParent = FirstGeneration()
+bg=blue</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLState</id>
+    <coordinates>
+      <x>702</x>
+      <y>459</y>
+      <w>207</w>
+      <h>72</h>
+    </coordinates>
+    <panel_attributes>GxChild;자식 세대 선언
+Rollette_Wheel(GxParent)
+bg=blue</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLSpecialState</id>
+    <coordinates>
+      <x>783</x>
+      <y>378</y>
+      <w>36</w>
+      <h>36</h>
+    </coordinates>
+    <panel_attributes>bg=green
+type=decision</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>792</x>
+      <y>342</y>
+      <w>27</w>
+      <h>54</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>10.0;40.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>792</x>
+      <y>405</y>
+      <w>261</w>
+      <h>63</h>
+    </coordinates>
+    <panel_attributes>[continueCycle &lt; MAX_GENE_CYCLE ]
+//[ 최대 사이클 주기: OK]
+lt=&lt;-</panel_attributes>
+    <additional_attributes>10.0;50.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>810</x>
+      <y>387</y>
+      <w>522</w>
+      <h>360</h>
+    </coordinates>
+    <panel_attributes>[continueCycle &gt;= MAX_GENE_CYCLE ]
+lt=&lt;-</panel_attributes>
+    <additional_attributes>290.0;380.0;290.0;10.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLNote</id>
+    <coordinates>
+      <x>540</x>
+      <y>315</y>
+      <w>144</w>
+      <h>27</h>
+    </coordinates>
+    <panel_attributes>step1. 초기 세대 생성
+bg=orange</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLState</id>
+    <coordinates>
+      <x>1215</x>
+      <y>207</y>
+      <w>126</w>
+      <h>36</h>
+    </coordinates>
+    <panel_attributes>gene_scoring
+bg=red</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLState</id>
+    <coordinates>
+      <x>1161</x>
+      <y>135</y>
+      <w>234</w>
+      <h>36</h>
+    </coordinates>
+    <panel_attributes>Rollette_Wheel()
+bg=red</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>Relation</id>
+    <coordinates>
+      <x>1269</x>
+      <y>162</y>
+      <w>27</w>
+      <h>63</h>
+    </coordinates>
+    <panel_attributes>lt=&lt;-</panel_attributes>
+    <additional_attributes>10.0;50.0;10.0;10.0</additional_attributes>
+  </element>
+  <element>
+    <id>UMLState</id>
+    <coordinates>
+      <x>1215</x>
+      <y>441</y>
+      <w>126</w>
+      <h>36</h>
+    </coordinates>
+    <panel_attributes>gene_scoring
+bg=red</panel_attributes>
+    <additional_attributes/>
+  </element>
+  <element>
+    <id>UMLState</id>
+    <coordinates>
+      <x>1197</x>
+      <y>279</y>
+      <w>171</w>
+      <h>36</h>
+    </coordinates>
+    <panel_attributes>
+bg=blue</panel_attributes>
+    <additional_attributes/>
+  </element>
+</diagram>

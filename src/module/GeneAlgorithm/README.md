@@ -95,24 +95,18 @@
 
 4. 입력 형태    
   - 설명    
-    - line 1, 전체 테스트 세트 개수,
-    - line 2, 찾을 발화 문자열의 개수,
-    - line 3, 전체 발화 문자열 G0,
-    - line 4 ~ n + 2, 찾을 발화 문자열 Gx
+    - line 1, 전체 대화문에 대한 모음 문자열,
+    - line 2, 카메라에 인식된 발화자 수(n), 대화 시간(초)
+    - line 3, 발화자 ID 값, 발화된 문장 개수(m)
+    - line 4, 발화 문장, (예측) 시작 시간, (예측) 종료 시간
+    - line 5, line 2 ~ 4 반복
   - 예시    
   ```
-    line 1 : 2 //테스트 세트 개수   
-    line 2 : 5  //Gx 개수   
-    line 3 : 12356162735715263616236126351263635126316236162351623612636162636162   
-    line 4 : 35126   
-    line 5 : 516236   
-    line 6 : 526361623612   
-    line 7 : 1623613   
-    line 8 : 133571526   
-    line 9 : 2  //Gx 개수   
-    line 10 : 1235616273571526361B23612635C263635126316236162351623612636162636162   
-    line 11 : 3614223   
-    line 12 : 6726   
+    line 1 : 12356162735715263616236126351263635126316236162351623612636162636162  //전체 대화문에 대한 모음 문자열   
+    line 2 : 1 20  //발화자 수, 총 대화문 시간(sec)  
+    line 3 : id123561627357152, 2  //발화자의 ID, 발화자의 대화 수
+    line 4 : 35126 3.43 5.52  
+    line 5 : 516236 10.23 15.03
   ```
 5. 출력 형태    
   - 설명    
@@ -132,7 +126,7 @@
 6. 마무리    
   - 영상으로 화자 분리를 하기 위하여 문제를 전환해봤습니다. 너무나 많은 변이와 치환 작업이 소요되겠지만 추후에 좀 더 정확한 방법 또한 생각을 해보겠습니다.    
   - 음성 파형을 통하여 화자 분리를 하는 아마존의 Transcribe 나 Github 내에 여러 작업물을 참고하여 성공해보겠습니다.    
-    
+
 ### TO_ENGLISH (translated above)
 1. Purpose
 - In the whole dialogue, the vowels are converted to strings of numeric type (G0), and the shape of the lips recognized by the camera   is also converted to the numeric string (Gx) based on the vowels. (x = 1, 2, 3 ...)    
@@ -180,7 +174,7 @@
     - 3.2.1 Scoring   
       *comment : To give an advantage over a particular gene sequence, we will score based on how consecutive the shape appears within G0 and how close it is to the current search index.*    
       - 3.2.1.1 Continuous form   
-        - The most ideal form is that Gx exists in perfect match within G0. However, some of the gene strings may not match. Therefore, this part should be weighted.   
+        - The most ideal form is that Gx exists in perfect match within G0. However, some of the gene strings may not match. Theid123561627357152, 2refore, this part should be weighted.   
       - 3.2.1.2 Any location   
         - Certain genes (Gx) may overlap due to synonym repetition in G0. In that case, you should select the nearest gene sequence as the starting point of the current search index.
       - 3.3.1.3 Expression
@@ -230,24 +224,18 @@
 
 4. Input mode    
 - comment    
-    - line 1, Total test set count
-    - line 2, The number of speech strings to find   
-    - line 3, Full digits string G0  
-    - line 4 ~ n + 2, target digits string Gx   
+    - line 1, the vowel string from a Full text
+    - line 2, the number of speakers recognized(n), the lap time(second)   
+    - line 3, speaker's id, the number of setences(m)  
+    - line 4 ~ m + 3, target digits string, 'Gx'
+    - line 5, iteration from line 3~4 by n  
 - example    
   ```
-    line 1 : 2 //Total test set count  
-    line 2 : 5  //The number of speech strings to find   
-    line 3 : 12356162735715263616236126351263635126316236162351623612636162636162   
-    line 4 : 35126   
-    line 5 : 516236   
-    line 6 : 526361623612   
-    line 7 : 1623613   
-    line 8 : 133571526   
-    line 9 : 2  //The number of speech strings to find   
-    line 10 : 1235616273571526361B23612635C263635126316236162351623612636162636162   
-    line 11 : 3614223   
-    line 12 : 6726   
+    line 1 : 12356162735715263616236126351263635126316236162351623612636162636162
+    line 2 : 1 20
+    line 3 : id123561627357152, 2
+    line 4 : 35126 3.43 5.52  
+    line 5 : 516236 10.23 15.03
   ```
 5. output mode   
 - comment   

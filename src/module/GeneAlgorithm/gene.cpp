@@ -2,21 +2,9 @@
 #include <fstream>
 #include <vector>
 #include <map>
-#include "userType.hpp"
-
 using namespace std;
-/*
-  * Defnition
-*/
-//def-gene
-#ifndef _GENE_CONSTANT_
-#define _GENE_CONSTANT_
 
-#define MAX_GENE_GENERATION 4
-#define GENE_MUTATION 0.1
-#define MAX_GENE_CYCLE 100
-
-#endif
+#include "./hpp/gene.hpp"
 /*
   * Variation
 */
@@ -24,13 +12,14 @@ vec_str full_digit;//GO(전체 문자)
 vector < vec_str > target_digit;//Gx(타겟 문자)
 map < char, vec_uint > markerMemory;//G0의 각 문자 분포도(markerMemory)
 vector < vec_pair_str > search_result;
+TalkHistory talkHistory;//발화 정보
 /*
   * Function
 */
 void input_gene();
 void process_gene();
 float gene_scoring(string);
-void how_sequential(string&, string&);
+void getCharMatrix(string&, string&);
 void output_gene();
 void print_global_constant();
 int main()
@@ -51,44 +40,62 @@ void input_gene()
         return;
     }
     //변수 선언
-    uint test_count, target_count;//테스트 케이스 개수, 발화 스트링 개수
-    string in_str;//입력용 문자
+    uint numOfTalker, numOfSentences;//전체 발화자 수, 발화자가 생성한 문장 수
+    string in_full_str, in_target_str;//전체 모음 문자열, 각 발화자의 모음 문자열
+    unsigned int talkerId;//발화자의 고유 식별값
+    float full_time, start_time, end_time;//총 발화 시간, 각 발화자의 시작 및 종료 시간
     //입력
-    ifs >> test_count;
-    for (uint i = 0; i < test_count; i++) {
-        ifs >> target_count >> in_str;
-        //테스트 케이스 세트 시작
-        full_digit.push_back(in_str);//G0 설정
-        vec_str in_vec_str;
-        for (uint j = 0; j < target_count; j++) {
-            ifs >> in_str;
-            in_vec_str.push_back(in_str);
+    ifs >> in_full_str >> numOfTalker >> full_time;
+    WordList full_str(in_full_str);
+    talkHistory.setFullTalk(full_str);
+    talkHistory.setLapTime(full_time);
+    //
+    for (uint i = 0; i < numOfTalker; i++) {
+        ifs >> talkerId >> numOfSentences;
+        /**************** 발화자 초기화 ****************/
+        Speaker speaker(talkerId);
+        TalkSession talksession(speaker);
+        /************* 발화자 문장 입력 **************/
+        for (uint j = 0; j < numOfSentences; j++) {
+            ifs >> in_target_str >> start_time >> end_time;
+            WordList wordlist(in_target_str, start_time, end_time);
+            talksession.addBundle(wordlist);
         }
-        target_digit.push_back(in_vec_str);//Gx 설정
+        /************* 발화 정보 기록 **************/
+        talkHistory.addSession(talksession);
     }
 }
 //하나의 G0에 대하여 다수의 GX의 탐색(1:M)
 void process_gene()
 {
     cout << "\n# function_process_gene is on # \n";
-    //지역 변수 선언
-    List < TalkTree > firstGeneration;
-    //패턴 트리 생성
-    for (uint i = 0; i < target_digit.size(); ++i)//이미지로부터 인식 입모양----(치환)---> {문자열 리스트}
-        for (uint j = 0; j < target_digit[i].size(); ++j)
-            how_sequential(full_digit[0], target_digit[i][j]);//
-    //초기 패턴 트리 스코어링
-    for (List < TalkTree >::iterator it = firstGeneration.begin(); it != firstGeneration.end(); ++it) {
-        it->searchDFS();
-        gene_scoring(it->getPath());
-    }
     /*
-      * 초기 세대 생성
+      * 1.인덱스 매트릭스 생성
+    */
+    //G0의 각 문자에 대한 인덱스 매트릭스
+    for (uint i = 0; i < target_digit.size(); ++i)
+        for (uint j = 0; j < target_digit[i].size(); ++j)
+          getCharMatrix(full_digit[0], target_digit[i][j]);
+    /*
+      * 2.초기 패턴 트리 생성
+    */
+    //while (Gx 리스트)
+    //특정 타이밍 구간 설정
+    //현재 문자열에 대하여 매트릭스를 보면서 "일치&불일치" 탐색을 하며 WordCandidate 생성
+    //결과 :
+    /*
+      * 3.패턴 트리 스코어링
+    */
+    //
+    //
+    /*
+      * 4.초기 세대 선택
       *
       * 찾고자하는 타겟(Gx)를 실제 G0에서 찾은 제일 유사한 녀석을 초기 세대로 설정
     */
-    //형제세대 생성
+    /* 형제세대 생성
     //룰렛 휠
+    */
     /*
     vec_pair_str eachResult;
     //
@@ -214,7 +221,7 @@ float gene_scoring(string _digit)
   * Gx digit 공백시 : - 1
   * 거리에 따른 감산 : - 0.1 %
 */
-void how_sequential(string& _full_digit, string& _target_digit)
+void getCharMatrix(string& _full_digit, string& _target_digit)
 {
     cout << "\n > function_how_serquential is on.\n";
     //G0 내에서 GX 토큰 간의 일치도
@@ -225,21 +232,20 @@ void how_sequential(string& _full_digit, string& _target_digit)
         return ;
     }
     //G0 내부의 문자 인덱스 정보 마킹
-    const int digit_size = _target_digit.size();
+    const uint digit_size = _target_digit.size();
     for (uint i = 0; i < _target_digit.size(); ++i) {
+        //G0 내부 문자 인덱스 정보 탐색&추가
+        vec_uint markerList;//단일 문자에 대한 인덱스 정보를 저장할 공간
+        size_t m = _full_digit.find(_target_digit[i]);
+        while (m != string::npos) {
+          markerList.push_back(m);
+          m = _full_digit.find(_target_digit[i], m + 1);
+        }
         //중복 여부 확인->문자 인덱스 정보
         if (markerMemory.find(_target_digit[i]) == markerMemory.end())
             markerMemory.insert(make_pair(_target_digit[i], markerList));
-        //G0 내부 문자 인덱스 정보 탐색&추가
-        vec_uint markerList;
-        size_t m = _full_digit.find(_target_digit[i]);
-        while (m != string::npos) {
-            markerList.push_back(m);
-            m = _full_digit.find(_target_digit[i], m + 1);
-        }
     }
     //마킹 트리 생성
-
 }
 void output_gene()
 {
@@ -250,12 +256,28 @@ void print_global_constant()
 {
     cout << "\n# function_print_global_constant is on # \n";
     cout << endl << " >> Input content " << endl;
-    for (uint i = 0; i < full_digit.size(); ++i) {
-        cout << ">> G0 : " << full_digit[i] << endl;
-        for (uint j = 0; j < target_digit[i].size(); ++j) {
-            cout << " >> Gx : " << target_digit[i][j] << endl;
+    //전체 문장 확인
+    cout << ">> 전체 발화 정보 :";
+    cout << talkHistory.getFullTalk().getSentence() << endl;
+    //발화자당 문장 정보 확인
+    cout << ">> 참여자 수 : ";
+    cout << talkHistory.getSessionCount() << endl;
+    vector < TalkSession > ts = talkHistory.getTalkSession();
+    for (vector <TalkSession>::iterator it = ts.begin(); it != ts.end(); ++it) {
+        cout << " > id : " << it->getSpeaker().getId() << endl;
+        cout << " > lap time : " << it->getLapTime() << endl;
+        cout << " > wordlist \n";
+        vector < WordList > wl = it->getTalkBundles();
+        for (vector < WordList >::iterator it2 = wl.begin(); it2 != wl.end(); ++it2) {
+            cout << " [" << it2->getStartTime() << ", " << it2->getEndTime() << "] " << it2->getSentence() << endl;
         }
     }
+    // for (uint i = 0; i < full_digit.size(); ++i) {
+    //     cout << ">> G0 : " << full_digit[i] << endl;
+    //     for (uint j = 0; j < target_digit[i].size(); ++j) {
+    //         cout << " >> Gx : " << target_digit[i][j] << endl;
+    //     }
+    // }
     cout << endl << " >> Input matrix " << endl;
     for (map < char, vec_uint >::iterator it = markerMemory.begin(); it != markerMemory.end(); ++it) {
         char key = it->first;
