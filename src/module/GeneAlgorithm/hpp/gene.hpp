@@ -16,7 +16,7 @@
 
 #define MAX_GENE_GENERATION 4//최대 자식 생성수
 #define GENE_MUTATION 0.001//돌연변이 확률
-#define MAX_GENE_CYCLE 100//최대 진화 세대
+#define MAX_GENE_CYCLE 100//최대 진화 반복 세대
 
 #endif
 

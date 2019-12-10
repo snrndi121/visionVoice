@@ -31,16 +31,17 @@ public :
       eachConversation.clear();
     }
     //method
-    void addSession(TalkSession);
+    void addSession(TalkSession);//발화 객체 추가
     //set
-    void setLapTime(float);
-    void setFullTalk(WordList);
+    void setLapTime(float);//전체 대화의 시간 설정
+    void setFullTalk(WordList);//전체 대화문 설정
     //get
-    float getLapTime() const;
-    WordList getFullTalk() const;
-    unsigned int getSessionCount() const;
-    vector < TalkSession > getTalkSession() const;
+    float getLapTime() const;//전체 대화의 시간 반환
+    WordList getFullTalk() const;///전체 대화문 반환
+    unsigned int getSessionCount() const;//발화자 수 반환
+    vector < TalkSession > getTalkSession() const;//발화 객체 반환
 private :
+    // void generateTiming();//전체 대화문에 대한 타이밍 구간 생성
     float laptime = 0;
     WordList fullConversation;//대화 전문
     vector < TalkSession > eachConversation;//대화를 구성하는 발화자의 정보

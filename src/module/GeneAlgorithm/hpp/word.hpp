@@ -5,6 +5,7 @@
 typedef struct WordNode {
     Mother_Word code;
     int index = -1;
+    float startTime = 0, endTime = 0;
 }WordNode;
 
 //모음 정보들이 모인 리스트(하나의 문장)
@@ -13,17 +14,20 @@ public :
     WordList(){}
     WordList(string, float s = 0, float e = 0);
     //method
-    void add(char c, int i = -1);
+    void add(char c, int i = -1, float = 0);
     //set
     void setLap(float, float);
+    void setLapAt(uint, float, float);
     void setScore(float);
     //get
-    string getSentence() const;
+    string getString() const;
+    vector < WordNode > getSentence() const;
     float getLapTime() const;
     float getStartTime() const;
     float getEndTime() const;
+    uint size() const;
 private :
-    WordNode makeWord(char c, int i = -1);
+    WordNode makeWord(char, int i = -1, float = 0);
     //var
     float startTime = 0, endTime = 0;//발화 문장의 시작, 끝
     float score = 0;//발화 문장에 대한 점수
@@ -34,7 +38,7 @@ private :
 typedef struct WordCandidate {
     WordCandidate(){};
     string origin;//중심 문장
-    string biased_origin;//실제 발견된 중심 문장
+    WordList biased_origin;//실제 발견된 중심 문장
     vector < WordList > candidates;//origin에서 파생될 수 있는 발화 문장 조합
     // void add(WordList);
     // void setRepresent(string);

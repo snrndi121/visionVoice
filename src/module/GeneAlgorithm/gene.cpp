@@ -8,8 +8,6 @@ using namespace std;
 /*
   * Variation
 */
-vec_str full_digit;//GO(전체 문자)
-vector < vec_str > target_digit;//Gx(타겟 문자)
 map < char, vec_uint > markerMemory;//G0의 각 문자 분포도(markerMemory)
 vector < vec_pair_str > search_result;
 TalkHistory talkHistory;//발화 정보
@@ -19,7 +17,7 @@ TalkHistory talkHistory;//발화 정보
 void input_gene();
 void process_gene();
 float gene_scoring(string);
-void getCharMatrix(string&, string&);
+void genCharMatrix();
 void output_gene();
 void print_global_constant();
 int main()
@@ -46,9 +44,15 @@ void input_gene()
     float full_time, start_time, end_time;//총 발화 시간, 각 발화자의 시작 및 종료 시간
     //입력
     ifs >> in_full_str >> numOfTalker >> full_time;
-    WordList full_str(in_full_str);
+
+    WordList full_str(in_full_str, 0, full_time);
+    /* 워드 내용 확인 시작 */
+    // cout << "full_str : " << full_str.getString() << endl;
+    // for (vector < WordNode >::iterator it = full_str.getSentence().begin(); it != full_str.getSentence().end(); ++it) {
+    //     cout << "[" << it->startTime << ", "<< it->endTime << "]" << endl;
+    // }
+    /* 워드 내용 확인 끝*/
     talkHistory.setFullTalk(full_str);
-    talkHistory.setLapTime(full_time);
     //
     for (uint i = 0; i < numOfTalker; i++) {
         ifs >> talkerId >> numOfSentences;
@@ -59,6 +63,12 @@ void input_gene()
         for (uint j = 0; j < numOfSentences; j++) {
             ifs >> in_target_str >> start_time >> end_time;
             WordList wordlist(in_target_str, start_time, end_time);
+            /* 워드 내용 확인 시작 */
+            // cout << "wordlist : " << wordlist.getString() << endl;
+            // for (vector < WordNode >::iterator it = wordlist.getSentence().begin(); it != wordlist.getSentence().end(); ++it) {
+            //     cout << "[" << it->startTime << ", "<< it->endTime << "]" << endl;
+            // }
+            /* 워드 내용 확인 끝*/
             talksession.addBundle(wordlist);
         }
         /************* 발화 정보 기록 **************/
@@ -70,15 +80,31 @@ void process_gene()
 {
     cout << "\n# function_process_gene is on # \n";
     /*
-      * 1.인덱스 매트릭스 생성
+      * 0. 변수 초기화
     */
-    //G0의 각 문자에 대한 인덱스 매트릭스
-    for (uint i = 0; i < target_digit.size(); ++i)
-        for (uint j = 0; j < target_digit[i].size(); ++j)
-          getCharMatrix(full_digit[0], target_digit[i][j]);
+    //0.1 전체 발화 구간의 타이밍 설정
+    /*
+      * 1. 초기 세대 생성
+    */
+    //1.1 단어 매트릭스 생성
+    //1.2
+    genCharMatrix();//G0의 각 문자에 대한 인덱스 매트릭스
     /*
       * 2.초기 패턴 트리 생성
     */
+    // genFirstGen();
+    // {
+        //WordCandidate wc;
+        //sliceTiming(talkHistory.getFullTalk());
+        //WordList wl_dst = talkHistory.getFullTalk();
+        //for (uint s = 'timing_point'; s < wl_dst.size/2; ++s) {
+        //for (uint alpha = 0; (s + wl_dst.size/2) + alph <= wl_dst; ++alpha)
+          //Wordlist wl_parent = wl_dst.at(s + alpha);//불일치 검색
+          //wc.setOrigin(wl_parent);
+          //WordList wl_child = wc.findFromMatrix();//일치 검색
+          //wc.addCandidate(wl_child);
+        // }
+    // }
     //while (Gx 리스트)
     //특정 타이밍 구간 설정
     //현재 문자열에 대하여 매트릭스를 보면서 "일치&불일치" 탐색을 하며 WordCandidate 생성
@@ -152,6 +178,33 @@ void process_gene()
        = 15 -(0.04 + 0.05) = 14.91
        => 14.91 * 발견된 위치에 따른 가중치(found_location(x))
 */
+//탐색
+/*
+  * how_sequential(Gx) = correct_word(a) * 8 - wrong_word(n - a) * 2,
+  *
+  * 기본
+  * GX의 132 이를 G0에서 찾는 문제로부터, 사이즈 3 단위만 보는 것이 아니라 G0를 전역적으로 봐야될 것.
+  *
+  * 예제
+  * 1 2 3 1 5 4 3 2 1 5 3 : G0
+  * 1 3 2 : GX
+  *
+  * Step1) Gx의 digit 체크
+  * * * * *     * * *   *
+  * 1 2 3 1 5 4 3 2 1 5 3
+  *
+  * Step2) 연속적으로 나타날 수 없는 경우는 제거,
+  *
+  * *   * *     * * *   *
+  * 1 2 3 1 5 4 3 2 1 5 3
+  *
+  * Step3) 거리에 따른 가중치 부여
+  *
+  * 점수 환산 방식 (임의)
+  * Gx digit 발견시 : + 5
+  * Gx digit 공백시 : - 1
+  * 거리에 따른 감산 : - 0.1 %
+*/
 float gene_scoring(string _digit)
 {
     cout << "\n# function_gene_scoring is on # \n";
@@ -194,58 +247,42 @@ float gene_scoring(string _digit)
     */
     return 0;
 }
-//탐색
-/*
-  * how_sequential(Gx) = correct_word(a) * 8 - wrong_word(n - a) * 2,
-  *
-  * 기본
-  * GX의 132 이를 G0에서 찾는 문제로부터, 사이즈 3 단위만 보는 것이 아니라 G0를 전역적으로 봐야될 것.
-  *
-  * 예제
-  * 1 2 3 1 5 4 3 2 1 5 3 : G0
-  * 1 3 2 : GX
-  *
-  * Step1) Gx의 digit 체크
-  * * * * *     * * *   *
-  * 1 2 3 1 5 4 3 2 1 5 3
-  *
-  * Step2) 연속적으로 나타날 수 없는 경우는 제거,
-  *
-  * *   * *     * * *   *
-  * 1 2 3 1 5 4 3 2 1 5 3
-  *
-  * Step3) 거리에 따른 가중치 부여
-  *
-  * 점수 환산 방식 (임의)
-  * Gx digit 발견시 : + 5
-  * Gx digit 공백시 : - 1
-  * 거리에 따른 감산 : - 0.1 %
-*/
-void getCharMatrix(string& _full_digit, string& _target_digit)
+void genCharMatrix()
 {
-    cout << "\n > function_how_serquential is on.\n";
-    //G0 내에서 GX 토큰 간의 일치도
-    vec_uint bestFitIndexes = {0};//가장 최적합의 인덱스
-    uint matchScore = 0;//매칭 점수
-    if (_full_digit.size() <= 0) {
-        cerr << "how_sequential() has a no valid full digit." << endl;
+    cout << "\n > function_getCharMatrix is on.\n";
+    if (talkHistory.getFullTalk().size() <= 0) {
+        cerr << "function_getCharMatrix() has a no valid full digit." << endl;
         return ;
     }
-    //G0 내부의 문자 인덱스 정보 마킹
-    const uint digit_size = _target_digit.size();
-    for (uint i = 0; i < _target_digit.size(); ++i) {
-        //G0 내부 문자 인덱스 정보 탐색&추가
-        vec_uint markerList;//단일 문자에 대한 인덱스 정보를 저장할 공간
-        size_t m = _full_digit.find(_target_digit[i]);
-        while (m != string::npos) {
-          markerList.push_back(m);
-          m = _full_digit.find(_target_digit[i], m + 1);
-        }
-        //중복 여부 확인->문자 인덱스 정보
-        if (markerMemory.find(_target_digit[i]) == markerMemory.end())
-            markerMemory.insert(make_pair(_target_digit[i], markerList));
-    }
-    //마킹 트리 생성
+    /*
+      vec_str full_digit;//GO(전체 문자)
+      vector < vec_str > target_digit;//Gx(타겟 문자)
+    */
+    // vector < string > target_digit;
+    /* 내부 확인 */
+    // vector < TalkSession > vts = talkHistory.getTalkSession();
+    // //인식된 발화자 수(session_i)
+    // for (uint session_i = 0; session_i < vts.size(); ++session_i) {
+    //     //발화자가 생성한 대화 수(talk_i)
+    //     vector < WordList > vwl = vts[session_i].getTalkBundles();
+    //     for (uint talk_i = 0; talk_i < vwl.size(); ++talk_i) {
+    //       // //G0 내부의 문자 인덱스 정보 마킹
+    //
+    //     }
+    // }
+    // const uint digit_size = _target_digit.size();
+    // for (uint i = 0; i < _target_digit.size(); ++i) {
+    //     //G0 내부 문자 인덱스 정보 탐색&추가
+    //     vec_uint markerList;//단일 문자에 대한 인덱스 정보를 저장할 공간
+    //     size_t m = _full_digit.find(_target_digit[i]);
+    //     while (m != string::npos) {
+    //       markerList.push_back(m);
+    //       m = _full_digit.find(_target_digit[i], m + 1);
+    //     }
+    //     //중복 여부 확인->문자 인덱스 정보
+    //     if (markerMemory.find(_target_digit[i]) == markerMemory.end())
+    //         markerMemory.insert(make_pair(_target_digit[i], markerList));
+    // }
 }
 void output_gene()
 {
@@ -258,7 +295,12 @@ void print_global_constant()
     cout << endl << " >> Input content " << endl;
     //전체 문장 확인
     cout << ">> 전체 발화 정보 :";
-    cout << talkHistory.getFullTalk().getSentence() << endl;
+    cout << talkHistory.getFullTalk().getString() << endl;
+    cout << ">> 전체 발화 타이밍 세팅 확인 " << endl;
+    vector < WordNode > wl_src = talkHistory.getFullTalk().getSentence();
+    for (uint i = 0; i < wl_src.size(); ++i) {
+        cout << "[" << wl_src[i].startTime << ", " << wl_src[i].endTime <<"]" << endl;
+    }
     //발화자당 문장 정보 확인
     cout << ">> 참여자 수 : ";
     cout << talkHistory.getSessionCount() << endl;
@@ -269,15 +311,13 @@ void print_global_constant()
         cout << " > wordlist \n";
         vector < WordList > wl = it->getTalkBundles();
         for (vector < WordList >::iterator it2 = wl.begin(); it2 != wl.end(); ++it2) {
-            cout << " [" << it2->getStartTime() << ", " << it2->getEndTime() << "] " << it2->getSentence() << endl;
+            cout << " [" << it2->getStartTime() << ", " << it2->getEndTime() << "] " << it2->getString() << endl;
+            vector < WordNode > wl_src = it2->getSentence();
+            for (uint i = 0; i < wl_src.size(); ++i) {
+                cout << "[" << wl_src[i].startTime << ", " << wl_src[i].endTime <<"]" << endl;
+            }
         }
     }
-    // for (uint i = 0; i < full_digit.size(); ++i) {
-    //     cout << ">> G0 : " << full_digit[i] << endl;
-    //     for (uint j = 0; j < target_digit[i].size(); ++j) {
-    //         cout << " >> Gx : " << target_digit[i][j] << endl;
-    //     }
-    // }
     cout << endl << " >> Input matrix " << endl;
     for (map < char, vec_uint >::iterator it = markerMemory.begin(); it != markerMemory.end(); ++it) {
         char key = it->first;
