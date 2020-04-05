@@ -8,7 +8,7 @@ using namespace std;
 /*
   * Variation
 */
-map < char, vec_uint > markerMemory;//G0의 각 문자 분포도(markerMemory)
+map < char, vector < WordNode* > > markerMemory;//G0의 각 문자 분포도(markerMemory)
 vector < vec_pair_str > search_result;
 TalkHistory talkHistory;//발화 정보
 /*
@@ -80,31 +80,36 @@ void process_gene()
 {
     cout << "\n# function_process_gene is on # \n";
     /*
-      * 0. 변수 초기화
+      * 1. 변수 초기화
     */
-    //0.1 전체 발화 구간의 타이밍 설정
+    //1.1 전체 발화 구간의 타이밍 설정
     /*
-      * 1. 초기 세대 생성
+      * WordList 생성자 당시에 수행함
+      * LapTime 주어지면 전체 문자 길이 수를 나눠서
+      * 각 문자가 수행된 startTime, endTime을 초기화함.
     */
-    //1.1 단어 매트릭스 생성
-    //1.2
+    //1.2 단어 매트릭스 생성
+    /*
+      * 전체 발화문 내에 위치한 각 문자(WordNode)에 대한 포인터 리스트 저장
+      * 변수 : markingMemory
+    */
     genCharMatrix();//G0의 각 문자에 대한 인덱스 매트릭스
     /*
-      * 2.초기 패턴 트리 생성
+      * 2. 초기 세대 생성
     */
-    // genFirstGen();
-    // {
-        //WordCandidate wc;
-        //sliceTiming(talkHistory.getFullTalk());
-        //WordList wl_dst = talkHistory.getFullTalk();
-        //for (uint s = 'timing_point'; s < wl_dst.size/2; ++s) {
-        //for (uint alpha = 0; (s + wl_dst.size/2) + alph <= wl_dst; ++alpha)
-          //Wordlist wl_parent = wl_dst.at(s + alpha);//불일치 검색
-          //wc.setOrigin(wl_parent);
-          //WordList wl_child = wc.findFromMatrix();//일치 검색
-          //wc.addCandidate(wl_child);
-        // }
-    // }
+    //1.2 단어 매트릭스를 참조하여 현재 검색할 문자열 설정
+    genFirstGen();
+    {
+        WordCandidate wc;
+        WordList wl_dst = talkHistory.getFullTalk();
+        for (uint s = 'timing_point'; s < wl_dst.size/2; ++s) {
+        for (uint alpha = 0; (s + wl_dst.size/2) + alph <= wl_dst; ++alpha)
+          Wordlist wl_parent = wl_dst.at(s + alpha);//불일치 검색
+          wc.setOrigin(wl_parent);
+          WordList wl_child = wc.findFromMatrix();//일치 검색
+          wc.addCandidate(wl_child);
+        }
+    }
     //while (Gx 리스트)
     //특정 타이밍 구간 설정
     //현재 문자열에 대하여 매트릭스를 보면서 "일치&불일치" 탐색을 하며 WordCandidate 생성
@@ -254,22 +259,26 @@ void genCharMatrix()
         cerr << "function_getCharMatrix() has a no valid full digit." << endl;
         return ;
     }
+    vector < WordNode >& src = talkHistory.getFullTalk().getSentence();
+    string fulltalk = talkHistory.getFullTalk().getString();
+    for (uint i = 0; i < fulltalk.size(); ++i) {
+        //중복 여부 확인
+        if (markerMemory.find(fulltalk[i]) == markerMemory.end()) {
+            vector < WordNode* > markerList;
+            size_t m = i;
+            //전
+            while (m != string::npos) {
+                src[m].index = m;
+                markerList.push_back(&src[m]);
+                m = fulltalk.find(fulltalk[i], m + 1);
+            }
+            markerMemory.insert(make_pair(fulltalk[i], markerList));
+        }
+    }
     /*
       vec_str full_digit;//GO(전체 문자)
       vector < vec_str > target_digit;//Gx(타겟 문자)
     */
-    // vector < string > target_digit;
-    /* 내부 확인 */
-    // vector < TalkSession > vts = talkHistory.getTalkSession();
-    // //인식된 발화자 수(session_i)
-    // for (uint session_i = 0; session_i < vts.size(); ++session_i) {
-    //     //발화자가 생성한 대화 수(talk_i)
-    //     vector < WordList > vwl = vts[session_i].getTalkBundles();
-    //     for (uint talk_i = 0; talk_i < vwl.size(); ++talk_i) {
-    //       // //G0 내부의 문자 인덱스 정보 마킹
-    //
-    //     }
-    // }
     // const uint digit_size = _target_digit.size();
     // for (uint i = 0; i < _target_digit.size(); ++i) {
     //     //G0 내부 문자 인덱스 정보 탐색&추가
@@ -296,11 +305,11 @@ void print_global_constant()
     //전체 문장 확인
     cout << ">> 전체 발화 정보 :";
     cout << talkHistory.getFullTalk().getString() << endl;
-    cout << ">> 전체 발화 타이밍 세팅 확인 " << endl;
-    vector < WordNode > wl_src = talkHistory.getFullTalk().getSentence();
-    for (uint i = 0; i < wl_src.size(); ++i) {
-        cout << "[" << wl_src[i].startTime << ", " << wl_src[i].endTime <<"]" << endl;
-    }
+    // 전체 발화 타이밍 세팅 확인
+    // vector < WordNode > wl_src = talkHistory.getFullTalk().getSentence();
+    // for (uint i = 0; i < wl_src.size(); ++i) {
+    //     cout << "[" << wl_src[i].startTime << ", " << wl_src[i].endTime <<"]" << endl;
+    // }
     //발화자당 문장 정보 확인
     cout << ">> 참여자 수 : ";
     cout << talkHistory.getSessionCount() << endl;
@@ -312,20 +321,21 @@ void print_global_constant()
         vector < WordList > wl = it->getTalkBundles();
         for (vector < WordList >::iterator it2 = wl.begin(); it2 != wl.end(); ++it2) {
             cout << " [" << it2->getStartTime() << ", " << it2->getEndTime() << "] " << it2->getString() << endl;
-            vector < WordNode > wl_src = it2->getSentence();
-            for (uint i = 0; i < wl_src.size(); ++i) {
-                cout << "[" << wl_src[i].startTime << ", " << wl_src[i].endTime <<"]" << endl;
-            }
+            // 타이밍 정보 확인
+            // vector < WordNode > wl_src = it2->getSentence();
+            // for (uint i = 0; i < wl_src.size(); ++i) {
+            //     cout << "[" << wl_src[i].startTime << ", " << wl_src[i].endTime <<"]" << endl;
+            // }
         }
     }
     cout << endl << " >> Input matrix " << endl;
-    for (map < char, vec_uint >::iterator it = markerMemory.begin(); it != markerMemory.end(); ++it) {
+    for (map < char, vector < WordNode*> >::iterator it = markerMemory.begin(); it != markerMemory.end(); ++it) {
         char key = it->first;
-        cout << key << " has indexes :";
-        for (vec_uint::iterator it2 = markerMemory[key].begin(); it2 != markerMemory[key].end(); ++it2) {
-            cout << *it2 << " ";
+        cout << " #" <<  key << " has indexes :";
+        for (vector < WordNode*>::iterator it2 = markerMemory[key].begin(); it2 != markerMemory[key].end(); ++it2) {
+            cout << (*it2)->index << " ";
         }
-        cout << endl;
+        cout << endl << endl;
     }
     cout << endl << " >> Searching Result" << endl;
     for (uint i = 0; i < search_result.size(); ++i) {

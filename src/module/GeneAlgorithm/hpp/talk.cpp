@@ -55,9 +55,13 @@ float TalkHistory::getLapTime() const
 {
     return this->laptime;
 }
-WordList TalkHistory::getFullTalk() const
+// WordList TalkHistory::getFullTalk() const
+// {
+//     return this->fullConversation;
+// }
+WordList& TalkHistory::getFullTalk()
 {
-    return this->fullConversation;
+    return (this->fullConversation);
 }
 vector < TalkSession > TalkHistory::getTalkSession() const
 {

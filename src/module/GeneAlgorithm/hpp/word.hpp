@@ -21,7 +21,7 @@ public :
     void setScore(float);
     //get
     string getString() const;
-    vector < WordNode > getSentence() const;
+    vector < WordNode >& getSentence();
     float getLapTime() const;
     float getStartTime() const;
     float getEndTime() const;

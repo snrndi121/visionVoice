@@ -81,7 +81,7 @@ string WordList::getString() const
     }
     return res;
 }
-vector < WordNode > WordList::getSentence() const
+vector < WordNode >& WordList::getSentence()
 {
     return sentence;
 }
