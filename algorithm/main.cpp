@@ -1,5 +1,5 @@
 /*
-  * 날짜 : 190415
+  * 업데이트 날짜 : 190416
   * 내용 : 긴 문자열에서 특정 문자열 찾기 (KMP, 아호코라식)
   * 특이사항
     1. 특정 문자열(S[i]) 간의 순차성
@@ -27,24 +27,32 @@ using namespace std;
 #define PROCESS_TERM 5
 
 //def
-struct SType {//searchType
-  SType(size_t _sz, char *_data) : sz(_sz) {
-      data = new char[_sz];
-      for (size_t i = 0; i < _sz; ++i) { data[i]=_data[i];}
+struct FType {//searchType
+  FType() {;}
+  FType(size_t _sz, const char *_data) {
+      set(_sz, _data);
   }
   friend ostream&
-  operator<<(ostream& ost, const SType& s) {
-      for (size_t i = 0; i < s.sz; ++i) { ost << s.data[i];}
+  operator<<(ostream& ost, const FType* s) {
+      for (size_t i = 0; i < s->sz; ++i) { ost << s->data[i];}
       return ost;
   }
-  ~SType() {
-      cout << "\n##SType die :";
-      cout << data << endl;
+  void set(size_t _sz, const char *_data) {
+        if (data != nullptr) delete data;
+        this->sz =_sz;
+        data = new char[_sz];
+        for (size_t i = 0; i < _sz; ++i) { data[i]=_data[i];}
+  }
+  ~FType() {
+      cout << "\n##FType die\n";
+      cout << this << endl;
+      cout << "\nsz :" << sz << ", data :" << data << endl;
+      sz = 0;
       delete data;
   }
   //var
   size_t sz = 0;
-  char *data;
+  char *data = nullptr;
 };
 typedef pair < int, int > ptype;
 typedef vector < int > vtype;
@@ -52,21 +60,23 @@ typedef vector < ptype > v_ptype;
 typedef vector < vtype > v_vtype;
 //var
 char* input_src;
-vector < SType > input_dst;
+vector < FType *> input_dst;
 //
 v_ptype res1, res2;
 //func
 void generate_TESTCASE_N();
 void generate_Sn();
-v_vtype find_KMP(const char*, vector < SType >&);
-v_vtype find_AHO(const char*, vector < SType >&);
+v_vtype find_KMP(const char*, vector < FType >&);
+v_vtype find_AHO(const char*, vector < FType >&);
 void print_TESTCASE_N(const v_ptype&);
 void print_vtype(const vtype &);
 int main()
 {
     generate_TESTCASE_N();
     generate_Sn();
-    for (int i = 0; i < input_dst.size(); ++i) { cout << input_dst[i].data << endl;}
+    cout << input_dst.size() << endl;
+    for (int i = 0; i < input_dst.size(); ++i) {
+      cout << input_dst[i]->data << endl;}
     // find_KMP(src, dst);
     // res2 = find_AHO(src, dst);
     //
@@ -89,32 +99,28 @@ void generate_Sn()
 {
     int cnt = 0;
     cout << "#generate_Hn ";
-    vector < SType > res;
-    size_t e_start = 0, e_end = 0, prev_e_end = 0;
+    vector < FType > res;
+    size_t e_start = 0, e_end = 0, prev_e_end = 0, e_sz;
+    char *buffer = new char[MAX_HN_LEN];
     srand(time(NULL));
+    vector <FType*> sample;
     //K개의 L(i)길이를 가지는 H(i) 세팅
     for (size_t i = 0; i < MAX_HN_SIZE; ++i) {
-        //
-        // if (cnt++ > PROCESS_TERM) {cout << "."; cnt%=PROCESS_TERM;}
-        //
         e_end = AVG_HN_LEN * (i+1);
         e_start=rand()%(e_end-prev_e_end)+prev_e_end;
-        size_t e_sz=rand()%(MAX_HN_LEN+1-MIN_HN_LEN)+MIN_HN_LEN;
-        cout << "(" << i << ")s :" << e_start << ", e:" << e_end << " pre_e:" << prev_e_end << ", sz :" << e_sz << endl;
+        e_sz=rand()%(MAX_HN_LEN+1-MIN_HN_LEN)+MIN_HN_LEN;
+        // cout << "\n(" << i << ")s :" << e_start << ", e:" << e_end << " pre_e:" << prev_e_end << ", sz :" << e_sz << endl;
         //적합성
-        if (e_start+e_sz-1 > e_end) {cout <<"#exeed"<<endl;i--;continue;}
+        if (e_start+e_sz-1 > e_end) {i--; continue;}
         //할당
-        char *u = new char[e_sz];
-        copy(input_src+e_start, input_src+e_start+e_sz, u);//[start, end]
-        SType ele(e_sz, u);
-        delete u;
-        cout << ele << endl;
+        copy(input_src+e_start, input_src+e_start+e_sz, buffer);//[start, end]
+        FType* ele = new FType(e_sz, buffer);
         input_dst.push_back(ele);
         prev_e_end = e_end;
     }
     cout << " done" << endl;
 }
-vtype getPartialMatch(const SType& dst)
+vtype getPartialMatch(const FType& dst)
 {
     uint m = dst.sz;
     vtype pi(m, 0);
@@ -139,7 +145,7 @@ vtype getPartialMatch(const SType& dst)
     }
     return pi;
 }
-vtype searchKMP(const char *_src, SType& _dst, vtype &_pi)
+vtype searchKMP(const char *_src, FType& _dst, vtype &_pi)
 {
     //
     int cnt = 0;
@@ -170,7 +176,7 @@ vtype searchKMP(const char *_src, SType& _dst, vtype &_pi)
     }
     return res;
 }
-v_vtype find_KMP(const char *_src, vector < SType >& _dst)
+v_vtype find_KMP(const char *_src, vector < FType >& _dst)
 {
     // v_ptype res;
     cout << "#find_KMP ";
@@ -190,7 +196,7 @@ v_vtype find_KMP(const char *_src, vector < SType >& _dst)
     cout << " done" << endl;
     return res;
 }
-v_vtype find_AHO(const short *_src, vector < SType >& dst)
+v_vtype find_AHO(const short *_src, vector < FType >& dst)
 {
     v_vtype res;
     return res;
