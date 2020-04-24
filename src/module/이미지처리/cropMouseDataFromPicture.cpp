@@ -73,12 +73,24 @@ void readMouthFromFile()
         out_file.str(DST_IMG_PATH + DST_IMG_FOLDER + fn + IMG_EXTENDER);
         WriteMouthFromFaces(frame, out_file.str());
         //진행상황체크
-        cout << "#stage :" << ++cnt << endl;
+        cout << "#s:" << ++cnt << endl;
         //파일스트림 초기화
-        if (cnt > 70) break;
+        if (cnt > 20) break;
         in_file.clear();
         out_file.clear();
     }
+}
+//입술 영역 재조정
+Rect GetAdjRect(const Mat& _src, const Rect& _dst, const unsigned int _rest) {
+    Rect res = _dst;
+    static uint _adj_height=_rest*3;
+    res.x = res.x -_rest >= 0? res.x -_rest : 0;
+    res.y = res.y -_rest >= 0? res.y -_rest : 0;
+    res.width = res.x + res.width +_rest <= _src.cols?
+              (res.width +_rest) : (res.width + (_src.cols-res.x-res.width)/2);
+    res.height = res.y + res.height +_adj_height <= _src.rows?
+            (res.height +_adj_height) : (res.height + (_src.rows-res.y-res.height)/2);
+    return res;
 }
 void WriteMouthFromFaces(Mat& img, const string& filename)
 {
@@ -88,34 +100,42 @@ void WriteMouthFromFaces(Mat& img, const string& filename)
     /*
       * 장치3 : 여유있게 출력
     */
-    const unsigned int REST_START = 5, REST_END = 10;
+    const unsigned int REST = 7;
     for(unsigned int i = 0; i < faces.size(); ++i)
     {
           /*
             * 장치1 : 전체 영역에서 얼굴 영역 ROI 타겟팅
           */
-          Rect face = faces[i];
-          Mat F_ROI = img(Rect(face.x-REST_START, face.y-REST_START, face.width+REST_END, face.height+REST_END));//얼굴 영역을 따로 추출해옴
-          // Mat F_ROI = img(Rect(face.x-REST, face.y-REST, face.width+REST, face.height+REST));//얼굴 영역을 따로 추출해옴
-          if(!mouth_cascade.empty())//입 분류기 존재시
-          {
-              vector<Rect_<int> > mouth;
-              detectMouth(F_ROI, mouth);//얼굴에서 입찾기
-              /*
-                * 장치2 : mouth가 여러개 나왔다면 높이가 제일 높은 녀석 = 진짜 mouse
-              */
-              //입 자체가 먼저 인지된다면,
-              if (mouth.size() > 0) {
-                  unsigned int real = 0;
-                  for(unsigned int j = 0; j < mouth.size(); ++j) {//입술 영역 표시
-                      if (mouth[real].y < mouth[j].y) { real = j;}
-                  }
-                  Rect m = mouth[real];
-                  // rectangle(F_ROI, Point(m.x-REST, m.y-REST), Point(m.x + m.width + REST, m.y + m.height + REST), Scalar(0, 255, 0), 1, 4);
-                  // Mat M_ROI = F_ROI(Rect(m.x-REST_START, m.y-REST_START, m.width+REST_END, m.height+REST_END));//얼굴 영역을 따로 추출해옴
-                  cout << m.x << ", " << m.y << "," << m.width << m.height << endl;
-                  // imwrite(filename, M_ROI);//출력
-              }
+            Rect face = faces[i];
+            // rectangle(img, Point(face.x, face.y), Point(face.x + face.width, face.y + face.height + adj_rest), Scalar(0, 255, 0), 1, 4);
+            rectangle(img, GetAdjRect(img, face, REST), Scalar(0, 255, 0), 2, 4);
+            cout << "{" << endl;
+            Mat F_ROI = img(GetAdjRect(img, face, REST));//얼굴 영역을 따로 추출해옴
+            cout << "}" << endl;
+            if(!mouth_cascade.empty())//입 분류기 존재시
+            {
+                vector<Rect_<int> > mouth;
+                detectMouth(F_ROI, mouth);//얼굴에서 입찾기
+                /*
+                  * 장치2 : mouth가 여러개 나왔다면 높이가 제일 높은 녀석 = 진짜 mouse
+                */
+                //입 자체가 먼저 인지된다면,
+                if (mouth.size() > 0) {
+                    unsigned int real = 0;
+                    for(unsigned int j = 0; j < mouth.size(); ++j) {//입술 영역 표시
+                        if (mouth[real].y < mouth[j].y) { real = j;}
+                    }
+
+                    Rect m = mouth[real];
+                    unsigned int adj_m_rest = m.y + m.height+REST > F_ROI.cols? (F_ROI.cols-m.height)/2 : REST;
+                    // rectangle(F_ROI, Point(m.x-REST, m.y-REST*2), Point(m.x + m.width + REST, m.y + m.height + REST), Scalar(0, 255, 0), 1, 4);
+                    rectangle(F_ROI, GetAdjRect(F_ROI, m, REST), Scalar(0, 255, 0), 2, 4);
+                    cout << "{" << endl;
+                    // Mat M_ROI = F_ROI(Rect(m.x-REST, m.y-REST*2, m.width+REST, m.height+adj_m_rest));//얼굴 영역을 따로 추출해옴
+                    Mat M_ROI = F_ROI(GetAdjRect(F_ROI, m, REST));//얼굴 영역을 따로 추출해옴
+                    cout << "}" << endl;
+                    // imwrite(filename, img);//출력
+                }
           }
       }
 }
