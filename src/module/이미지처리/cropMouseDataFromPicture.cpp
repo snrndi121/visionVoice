@@ -158,8 +158,8 @@ void setMouthData2(float _minMouthArea)
         /*
           * messaging
         */
-        cout << " # s:" << cnt+1 << endl;
-        // cout << " > found mouthland size :" << mouthland.size()/END_LIPS_IDX << endl;
+        cout << " # s:" << cnt+1;
+        cout << ", m:" << mouthland.size()/NUM_LANDMARK << endl;
 
         /*
           * Output
@@ -199,11 +199,14 @@ void drawContour(Mat &_frame, vector <Point2f> &mouthland)
     Mat gray;
     // Find face
     vector<Rect> faces;
-    // Convert frame to grayscale because
-    // faceDetector requires grayscale image.
-    cvtColor(_frame, gray, COLOR_BGR2GRAY);
-    // Detect faces
-    face_cascade.detectMultiScale(gray, faces);
+    detectFaces(_frame, faces);
+    uint target = 0;
+    if (faces.size() > 1) {
+        cout << " > multi face is detected.." << endl;
+        for (uint i = 1; i < faces.size(); ++i) {
+            target = faces[target].width < faces[i].width? i : target;
+        }
+    }
     // Variable for landmarks.
     // Landmarks for one face is a vector of points
     // There can be more than one face in the image. Hence, we
@@ -213,10 +216,10 @@ void drawContour(Mat &_frame, vector <Point2f> &mouthland)
     bool success = facemark->fit(_frame, faces, landmarks);
     if(success) {
       // If successful, render the landmarks on\ the face
-        for(int i = 0; i < landmarks.size(); i++) {
-            drawMouthContour(_frame, landmarks[i]);
-            for (int j = 0; j < landmarks[i].size(); ++j)
-                mouthland.push_back(landmarks[i][j]);
+        drawMouthContour(_frame, landmarks[target]);
+        for (int j = 0; j < landmarks[target].size(); ++j) {
+            if (landmarks[target].size() == NUM_LANDMARK) { mouthland.push_back(landmarks[target][j]);}
+            else { cerr << " > landmark is under uncompleted state." << endl;}
         }
     } else {
         cerr << " > lips detetion fail" << endl;
