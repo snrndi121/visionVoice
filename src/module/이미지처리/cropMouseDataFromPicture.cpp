@@ -50,28 +50,24 @@ const string SRC_TRAIN_LIST_FOLDER = "VOCmouth/ImageSets/Main/";
 const string DST_IMG_PATH = "/media/uki408/Seagate Expansion Drive1/Mouth/";
 const string DST_IMG_FOLDER[] = {"err/", "norm/", "eye/", "contour/"};
 const string IMG_EXTENDER = ".png";
-const string TEXT_NAME[] = {"./mouthArea_data.md", "./mouth_XY_data.md"};
+const string TEXT_NAME[] = {"./mouthArea_data.md", "./mouth_XY_data.md", "train.txt"};
 int main(int argc, char** argv)
 {
-      //분류기 선언
       face_cascade.load("/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_alt2.xml");
       mouth_cascade.load("./haarcascade_mcs_mouth.xml");
-      //분류기 유효 판단
       if (face_cascade.empty() || mouth_cascade.empty()) {
         cout << "File missing" << endl;
         return 1;
       }
-      /*
-        * 장치 4 : 입술 영역 통계 구하기
-      */
       // float avgMouthArea = calAVGMouth();
       // setMouthData1(3000);//by File
       setMouthData2(3000);//by File
-      // readMouthFromCam();//by Cam
       return 0;
 }
-/* method */
-//raw 입 영역 추출
+/*
+  * method
+*/
+//Save only mouth image as '.png'
 void setMouthData1(float _minMouthArea)
 {
     cout << "\n# setMouthData got MIN_MOUTH_AREA : " << _minMouthArea << endl;
@@ -120,7 +116,7 @@ void setMouthData1(float _minMouthArea)
         //count
     }
 }
-//입 외곽선 -> 입 영역 도출
+//Draw mouth contour and save it as '.png'
 void setMouthData2(float _minMouthArea)
 {
     cout << "\n# setMouthData got MIN_MOUTH_AREA : " << _minMouthArea << endl;
@@ -134,58 +130,75 @@ void setMouthData2(float _minMouthArea)
     vector<Point2f> mouthland;
     uint cnt = 0;
     ofstream mlm_ifs(TEXT_NAME[1], ofstream::trunc);
+    ofstream fn_list(DST_IMG_PATH + DST_IMG_FOLDER[3] + TEXT_NAME[2]);
     while(ifs >> fn) {
+        /*
+          * Declaration
+        */
         in_file.str(SRC_IMG_PATH + SRC_IMG_FOLDER[1] + fn + IMG_EXTENDER);
+        contour_file.str(DST_IMG_PATH + DST_IMG_FOLDER[3] + fn + IMG_EXTENDER);
         Mat frame = imread(in_file.str(), IMREAD_UNCHANGED);
-        //파일 이미지 존재 확인
+        /*
+          * File checking
+        */
         if (frame.empty()) {
             cerr << " > img is missing" << endl;
             cerr << " >> not found :"<<  in_file.str() << endl;
             return;
         }
-        //진행상황체크
-        cout << "#s:" << cnt+1 << endl;
-        //입술 찾아아서 저장
-        contour_file.str(DST_IMG_PATH + DST_IMG_FOLDER[3] + fn + IMG_EXTENDER);
-        drawContour(frame, mouthland);
-        cout << " > found mouthland size :" << mouthland.size()/END_LIPS_IDX << endl;
-        Mat mouth = frame(GetContourArea(mouthland));
-        //contour image wrtie
-        imwrite(contour_file.str(), mouth);//출력
         /*
-          *좌표값 테스트
-          drawCircleOn(frame, mouthland);
+          * Fine mouth and drawing
         */
-        //파일스트림 초기화
+        drawContour(frame, mouthland);
+        Mat mouth = frame(GetContourArea(mouthland));
+        /*
+          * messaging
+        */
+        cout << " # s:" << cnt+1 << endl;
+        cout << " > found mouthland size :" << mouthland.size()/END_LIPS_IDX << endl;
+
+        /*
+          * Output
+        */
+        imwrite(contour_file.str(), mouth);
+        writeMouthXY(mouthland, false);
+        fn_list << fn << endl;
+
+        /*
+          * Test mouth XY location
+        */
+        // drawCircleOn(frame, mouthland);
+
+        /*
+          * Limit testcase
+        */
+        if (++cnt >= NUM_TEST_CASE) break;
+
+        /*
+          * initializing
+        */
         in_file.clear();in_file.str("");
         contour_file.clear();contour_file.str("");
         loc_file.clear();loc_file.str("");
-        /*
-          * 좌표값 저장
-        */
-        writeMouthXY(mouthland, false);
-
-        //count
-        if (++cnt >= NUM_TEST_CASE) break;
     }
     mlm_ifs.close();
-    //write rest of mouth location
+    fn_list.close();
+    //write rest of 'mouthland'
     writeMouthXY(mouthland, true);
 }
-/* module */
-void drawContour(Mat &_frame, vector <Point2f> &mouthland)//, vector<Rect_<int> > &_faces)
+/*
+  * module
+*/
+//Draw contour from Point on 'image source'
+CascadeClassifier faceDetector("/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_alt2.xml");
+void drawContour(Mat &_frame, vector <Point2f> &mouthland)
 {
-    // Mat frame =_frame;
-    // Load Face Detector
-    CascadeClassifier faceDetector("/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_alt2.xml");
     // Create an instance of Facemark
-    Ptr<Facemark> facemark = FacemarkLBF::create();
     // Load landmark detector
+    Ptr<Facemark> facemark = FacemarkLBF::create();
     facemark->loadModel("./lbfmodel.yaml");
-
     // Variable to store a video frame and its grayscale
     Mat gray;
-    // Read a frame
     // Find face
     vector<Rect> faces;
     // Convert frame to grayscale because
@@ -204,21 +217,16 @@ void drawContour(Mat &_frame, vector <Point2f> &mouthland)//, vector<Rect_<int> 
       // If successful, render the landmarks on\ the face
         for(int i = 0; i < landmarks.size(); i++) {
             drawMouthContour(_frame, landmarks[i]);
-            //입술 영역 좌표 추출
             for (int j = 0; j < landmarks[i].size(); ++j)
                 mouthland.push_back(landmarks[i][j]);
         }
     } else {
         cerr << " > lips detetion fail" << endl;
     }
-    // Display results
-    // stringstream ss; ss << cnt << ".png";
-    // imwrite(ss.str(), _frame);
-    // Exit loop if ESC is pressed
 }
+//Mark circle from Point on 'image source'
 void drawCircleOn(Mat& _src, vector <Point2f> &_mouthland)
 {
-    //test
     int idx = _mouthland.size()-NUM_LANDMARK;
     Mat dot_frame = _src.clone();
     for (int i = START_LIPS_IDX; i <= END_LIPS_IDX; ++i) {
@@ -227,37 +235,41 @@ void drawCircleOn(Mat& _src, vector <Point2f> &_mouthland)
     imshow("dot_frame", dot_frame);
     waitKey();
 }
+//GetMouthFromFaces() : Extract mouth Image from face and Save it
+/*
+  * part1 : it will expand soure image enough to get meaningful information.
+  * part2 : it will choose the biggest 'y' to get real mouth images.
+  * part3 : it assume that the real mouth is below face.height/2.
+*/
 vector <Mat> GetMouthFromFaces(Mat& img, vector<Rect_<int> > faces)
 {
-    /*
-      * 장치3 : 여유있게 출력
-    */
     static uint count = 0;
     const unsigned int REST = 7;
     vector < Mat > res;
     for(unsigned int i = 0; i < faces.size(); ++i) {
             Rect face = faces[i];
-            //* deprecated : rectangle(img, Point(face.x, face.y), Point(face.x + face.width, face.y + face.height + adj_rest), Scalar(0, 255, 0), 1, 4);
-            // rectangle(img, GetAdjRect(img, face, REST), Scalar(0, 255, 0), 1, 4);
-            Mat F_ROI = img(GetAdjRect(img, face, REST));//얼굴 영역을 따로 추출해옴
-            if(!mouth_cascade.empty())//입 분류기 존재시
+            /*
+              * part1
+            */
+            Mat F_ROI = img(GetAdjRect(img, face, REST));
+            if(!mouth_cascade.empty())
             {
                 vector<Rect_<int> > mouth;
-                detectMouth(F_ROI, mouth);//얼굴에서 입찾기
+                detectMouth(F_ROI, mouth);
                 /*
-                  * 장치2 : mouth가 여러개 나왔다면 높이가 제일 높은 녀석 = 진짜 mouse
+                  * part2
                 */
-                if (mouth.size() > 0) {  //입 자체가 먼저 인지된다면,
+                if (mouth.size() > 0) {  //if there is mouth, then
                     unsigned int real = 0;
-                    for(unsigned int j = 0; j < mouth.size(); ++j) {//입술 영역 표시
+                    for(unsigned int j = 0; j < mouth.size(); ++j) {
                         if (mouth[real].y < mouth[j].y) { real = j;}
                     }
-                    //mouth.size() == 1 && 눈이 아닌 경우
+                    /*
+                      * part3
+                    */
                     Rect m = mouth[real];
-                    // rectangle(F_ROI, GetAdjRect(F_ROI, m, REST), Scalar(0, 255, 0), 1, 4);
                     if (mouth[real].y > F_ROI.rows/2) {
-                        //* deprecated : rectangle(F_ROI, Point(m.x-REST, m.y-REST*2), Point(m.x + m.width + REST, m.y + m.height + REST), Scalar(0, 255, 0), 1, 4);
-                        Mat M_ROI = F_ROI(GetAdjRect(F_ROI, m, REST));//얼굴 영역을 따로 추출해옴
+                        Mat M_ROI = F_ROI(GetAdjRect(F_ROI, m, REST));
                         res.push_back(M_ROI);
                     } else {//handling-exception
                         stringstream eye_out;
@@ -272,8 +284,7 @@ vector <Mat> GetMouthFromFaces(Mat& img, vector<Rect_<int> > faces)
       }
       return res;
 }
-/* module */
-//setMouthData2-입술 영역 재조정
+//setMouthData2 - adjust images
 Rect GetContourArea(vector <Point2f> &_fl)
 {
     int idx = _fl.size() > 0? _fl.size()-NUM_LANDMARK : 0;
@@ -286,7 +297,7 @@ Rect GetContourArea(vector <Point2f> &_fl)
     Rect res(Point(lx, ly), Point(rx, ry));
     return res;
 }
-//setMouthData1-입술 영역 재조정
+//setMouthData1 - adjust images
 Rect GetAdjRect(const Mat& _src, const Rect& _dst, const unsigned int _rest)
 {
     Rect res = _dst;
@@ -299,13 +310,12 @@ Rect GetAdjRect(const Mat& _src, const Rect& _dst, const unsigned int _rest)
     (res.height +_adj_height) : (res.height + (_src.rows-res.y-res.height)/2);
     return res;
 }
-//입 좌표 적기
+//Save point of landmark
 void writeMouthXY(vector <Point2f> &_mouthland, bool _force)
 {
-    //저장된 입 좌표 한번 쓰기
     if (_force || _mouthland.size()/NUM_LANDMARK >= MAX_MOUTH_CNT) {
         cout << " > mouth_xy is reporting.." << endl;
-        ofstream mlm_ifs(TEXT_NAME[1], ofstream::app);
+        ofstream mlm_ifs(DST_IMG_PATH + DST_IMG_FOLDER[3] + TEXT_NAME[1], ofstream::app);
         for (int i = 0; i < _mouthland.size()/NUM_LANDMARK; ++i) {
             int idx = NUM_LANDMARK*i;
             for (int j = START_LIPS_IDX; j <= END_LIPS_IDX; ++j) {
@@ -316,6 +326,7 @@ void writeMouthXY(vector <Point2f> &_mouthland, bool _force)
         mlm_ifs.close();
     }
 }
+//Calculate some of statistics of source images
 float calAVGMouth()
 {
     ifstream ifs(SRC_IMG_PATH + SRC_IMG_FOLDER[0] + "trainval.txt");
@@ -331,40 +342,31 @@ float calAVGMouth()
     while(ifs >> fn) {
         in_file.str(SRC_IMG_PATH + SRC_IMG_FOLDER[1] + fn + IMG_EXTENDER);
         Mat frame = imread(in_file.str(), IMREAD_UNCHANGED);
-        //파일 이미지 존재 확인
+
         if (frame.empty()) {
             cerr << " > img is missing" << endl;
             cerr << " >> not found :" <<  in_file.str() << endl;
             return -1;
         }
-        //입술 찾아아서 저장
+
         vector<Rect_<int> > faces;
         detectFaces(frame, faces);
         //
         vector<Mat> mouth = GetMouthFromFaces(frame, faces);
         for (uint i=0; i<mouth.size(); ++i) {
             uint ma = mouth[i].rows*mouth[i].cols;
-            m_sum += ma;//평균구하기
-            ofs << ma << endl;//편차, 표준분산구하기
+            m_sum += ma;//average
+            ofs << ma << endl;
             total++;
             left++;
         }
-        //canaria-overflow
-        // cout << "#s:" << ++left << endl;
-        //중간결산
+        //to avoid overflow
         if (left % MAX_MOUTH_CNT == 0) {
             cout << "# round(" << (total/MAX_MOUTH_CNT) << ")" << endl;
-              // cout << " > prev_avg :" << avgMA << endl;
-              // cout << " > add_sum :" << m_sum << endl;
             m_sum += avgMA*(total-MAX_MOUTH_CNT);
-              // cout << " > total_sum :" << m_sum << endl;
             avgMA = total > 0? m_sum/total : total;
-              // cout << " > total_avg :" << avgMA << endl;
             m_sum = left = 0;
         }
-        //진행상황체크
-        // if (total >= 100) break;
-        //파일스트림 초기화
         in_file.clear();
     }
     ofs.close();
@@ -384,14 +386,14 @@ float calAVGMouth()
     cout << "> diff :" << (sqrt(dev)/avgMA) * 100 << endl;
     return avgMA-sqrt(dev);
 }
-//분류기 : 얼굴검출
+//find face from source image
 void detectFaces(Mat& img, vector<Rect_<int> >& faces)
 {
   if (!face_cascade.empty())
     face_cascade.detectMultiScale(img, faces, 1.15, 3, 0|CASCADE_SCALE_IMAGE, Size(30, 30));
   return;
 }
-//분류기 : 입검출
+//find mouth from source image
 void detectMouth(Mat& img, vector<Rect_<int> >& mouth)
 {
     if (!mouth_cascade.empty())
