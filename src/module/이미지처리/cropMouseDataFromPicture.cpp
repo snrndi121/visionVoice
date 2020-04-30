@@ -20,7 +20,8 @@ using namespace cv::face;
 
 //def
 #define NUM_TEST_CASE 10
-#define MAX_MOUTH_CNT 5
+#define TEST_CASE_ON false
+#define MAX_MOUTH_CNT 100
 #define NUM_LANDMARK 68
 #define START_LIPS_IDX 48
 #define END_LIPS_IDX 67
@@ -37,6 +38,7 @@ void setMouthData2(float);
 float calAVGMouth();
 vector < Mat > GetMouthFromFaces(Mat&, vector<Rect_<int> >);
 void drawContour(Mat&, vector<Point2f> &);
+void drawContour2(Mat &_frame, vector <Point2f> &mouthland, bool _success);
 Rect GetAdjRect(const Mat& _src, const Rect& _dst, const unsigned int _rest);
 Rect GetContourArea(vector <Point2f> &_fl);
 void writeMouthXY(vector <Point2f> &, bool);
@@ -51,6 +53,7 @@ const string DST_IMG_PATH = "/media/uki408/Seagate Expansion Drive1/Mouth/";
 const string DST_IMG_FOLDER[] = {"err/", "norm/", "eye/", "contour/"};
 const string IMG_EXTENDER = ".png";
 const string TEXT_NAME[] = {"./mouthArea_data.md", "./mouth_XY_data.md", "train.txt"};
+
 int main(int argc, char** argv)
 {
       face_cascade.load("/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_alt2.xml");
@@ -125,9 +128,10 @@ void setMouthData2(float _minMouthArea)
         cerr << "The input file list is missgng" << endl;
         return ;
     }
+    facemark->loadModel("./lbfmodel.yaml");
+    vector<Point2f> mouthland;
     stringstream in_file, contour_file, loc_file;
     string fn;
-    vector<Point2f> mouthland;
     uint cnt = 0;
     ofstream mlm_ifs(TEXT_NAME[1], ofstream::trunc);
     ofstream fn_list(DST_IMG_PATH + DST_IMG_FOLDER[3] + TEXT_NAME[2]);
@@ -155,7 +159,7 @@ void setMouthData2(float _minMouthArea)
           * messaging
         */
         cout << " # s:" << cnt+1 << endl;
-        cout << " > found mouthland size :" << mouthland.size()/END_LIPS_IDX << endl;
+        // cout << " > found mouthland size :" << mouthland.size()/END_LIPS_IDX << endl;
 
         /*
           * Output
@@ -172,7 +176,7 @@ void setMouthData2(float _minMouthArea)
         /*
           * Limit testcase
         */
-        if (++cnt >= NUM_TEST_CASE) break;
+        if (++cnt >= NUM_TEST_CASE && TEST_CASE_ON) break;
 
         /*
           * initializing
@@ -189,14 +193,8 @@ void setMouthData2(float _minMouthArea)
 /*
   * module
 */
-//Draw contour from Point on 'image source'
-CascadeClassifier faceDetector("/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_alt2.xml");
 void drawContour(Mat &_frame, vector <Point2f> &mouthland)
 {
-    // Create an instance of Facemark
-    // Load landmark detector
-    Ptr<Facemark> facemark = FacemarkLBF::create();
-    facemark->loadModel("./lbfmodel.yaml");
     // Variable to store a video frame and its grayscale
     Mat gray;
     // Find face
@@ -205,7 +203,7 @@ void drawContour(Mat &_frame, vector <Point2f> &mouthland)
     // faceDetector requires grayscale image.
     cvtColor(_frame, gray, COLOR_BGR2GRAY);
     // Detect faces
-    faceDetector.detectMultiScale(gray, faces);
+    face_cascade.detectMultiScale(gray, faces);
     // Variable for landmarks.
     // Landmarks for one face is a vector of points
     // There can be more than one face in the image. Hence, we
@@ -288,8 +286,6 @@ vector <Mat> GetMouthFromFaces(Mat& img, vector<Rect_<int> > faces)
 Rect GetContourArea(vector <Point2f> &_fl)
 {
     int idx = _fl.size() > 0? _fl.size()-NUM_LANDMARK : 0;
-    cout << " > ml size :" << _fl.size() << endl;
-    cout << " > idx :" << idx << endl;
     float lx = _fl[idx+48].x - (_fl[idx+48].x - _fl[idx+5].x)/2,
         ly =_fl[idx+51].y - (_fl[idx+51].y - _fl[idx+33].y)/2,
         rx =_fl[idx+54].x + (_fl[idx+11].x - _fl[idx+54].x)/2,
