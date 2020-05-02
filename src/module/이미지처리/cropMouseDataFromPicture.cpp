@@ -33,12 +33,11 @@ Ptr<Facemark> facemark = FacemarkLBF::create();// Create an instance of Facemark
 /* drive */
 void setMouthData1(float);
 void setMouthData2(float);
-// void readMouthFromCam();
 /* module */
-float calAVGMouth();
-vector < Mat > GetMouthFromFaces(Mat&, vector<Rect_<int> >);
-void drawContour(Mat&, vector<Point2f> &);
-void drawContour2(Mat &_frame, vector <Point2f> &mouthland, bool _success);
+float calAVGMouth(uint);
+vector <Mat> GetMouthFromFaces(Mat&, vector<Rect_<int> >);
+vector <Mat> GetMouthContourFromFaces(Mat& img, vector<Rect_<int> >& faces, vector <Point2f>& mouthland);
+void drawContour(Mat&, vector<Rect>&, vector<Point2f> &);
 Rect GetAdjRect(const Mat& _src, const Rect& _dst, const unsigned int _rest);
 Rect GetContourArea(vector <Point2f> &_fl);
 void writeMouthXY(vector <Point2f> &, bool);
@@ -58,18 +57,97 @@ int main(int argc, char** argv)
 {
       face_cascade.load("/usr/local/share/opencv4/haarcascades/haarcascade_frontalface_alt2.xml");
       mouth_cascade.load("./haarcascade_mcs_mouth.xml");
+      facemark->loadModel("./lbfmodel.yaml");
       if (face_cascade.empty() || mouth_cascade.empty()) {
         cout << "File missing" << endl;
         return 1;
       }
-      // float avgMouthArea = calAVGMouth();
+      float avgMouthArea = 2000;
+      // float avgMouthArea = calAVGMouth(1);
       // setMouthData1(3000);//by File
-      setMouthData2(3000);//by File
+      //
+      // avgMouthArea = calAVGMouth(2);
+      setMouthData2(avgMouthArea);//by File
+      //
       return 0;
 }
 /*
   * method
 */
+//Calculate some of statistics of source images
+float calAVGMouth(uint _which)
+{
+    cout << "#calAVGMouth start -> " << _which << endl;
+    ifstream ifs(SRC_IMG_PATH + SRC_IMG_FOLDER[0] + "trainval.txt");
+    ofstream ofs(TEXT_NAME[0]);
+    if (ifs.fail()) {
+        cerr << "The input file list is missgng" << endl;
+        return -1;
+    }
+    stringstream in_file;
+    string fn;
+    uint total = 0, left = 0, m_sum = 0 ;
+    uint ma = 0;//temp
+    float avgMA = 0;
+    vector<Mat> mouth1;//which == 1
+    vector<Point2f> mouthland;
+    while(ifs >> fn) {
+        in_file.str(SRC_IMG_PATH + SRC_IMG_FOLDER[1] + fn + IMG_EXTENDER);
+        Mat frame = imread(in_file.str(), IMREAD_UNCHANGED);
+
+        if (frame.empty()) {
+            cerr << " > img is missing" << endl;
+            cerr << " >> not found :" <<  in_file.str() << endl;
+            return -1;
+        }
+        //which-judgement
+        vector<Rect_<int> > faces;
+        detectFaces(frame, faces);
+        if (_which == 1) {
+            mouth1 = GetMouthFromFaces(frame, faces);
+            for (uint i=0; i<mouth1.size(); ++i) {
+                ma = mouth1[i].rows*mouth1[i].cols;
+                m_sum += ma;//average
+                ofs << ma << endl;
+                total++;
+                left++;
+            }
+        } else {
+            drawContour(frame, faces, mouthland);//return contoured mouth
+            Mat resized_Mouth = frame(GetContourArea(mouthland));//resizeing the mouth image
+            ma = (resized_Mouth.rows*resized_Mouth.cols);
+            m_sum += ma;
+            ofs << ma << endl;
+            total++;
+            left++;
+        }
+        //to avoid overflow
+        if (left % MAX_MOUTH_CNT == 0) {
+            cout << "# round(" << (total/MAX_MOUTH_CNT) << ")" << endl;
+            m_sum += avgMA*(total-MAX_MOUTH_CNT);
+            avgMA = total > 0? m_sum/total : total;
+            m_sum = left = 0;
+        }
+        in_file.clear();
+        mouth1.clear();
+    }
+    ofs.close();
+    //avg
+    avgMA = total > 0? (m_sum + avgMA*(total-left))/total : 0;
+    //deviation
+    ifstream m_ifs(TEXT_NAME[0]);
+    cout << "> sample size :" << total << endl;
+    float dev = 0;
+    //print-all
+    while (m_ifs >> ma) { dev += pow(avgMA-ma, 2);}
+    ifs.close();
+    dev /= total;
+    cout << "> mean :" << avgMA << endl;
+    cout << "> deviation :" << dev << endl;
+    cout << "> standard deviation :" << sqrt(dev) << endl;
+    cout << "> diff :" << (sqrt(dev)/avgMA) * 100 << endl;
+    return avgMA-sqrt(dev);
+}
 //Save only mouth image as '.png'
 void setMouthData1(float _minMouthArea)
 {
@@ -123,14 +201,14 @@ void setMouthData1(float _minMouthArea)
 void setMouthData2(float _minMouthArea)
 {
     cout << "\n# setMouthData got MIN_MOUTH_AREA : " << _minMouthArea << endl;
+    //
     ifstream ifs(SRC_IMG_PATH + SRC_IMG_FOLDER[0] + "trainval.txt");
     if (ifs.fail()) {
         cerr << "The input file list is missgng" << endl;
         return ;
     }
-    facemark->loadModel("./lbfmodel.yaml");
     vector<Point2f> mouthland;
-    stringstream in_file, contour_file, loc_file;
+    stringstream in_file, contour_file, err_file;
     string fn;
     uint cnt = 0;
     ofstream mlm_ifs(TEXT_NAME[1], ofstream::trunc);
@@ -141,6 +219,8 @@ void setMouthData2(float _minMouthArea)
         */
         in_file.str(SRC_IMG_PATH + SRC_IMG_FOLDER[1] + fn + IMG_EXTENDER);
         contour_file.str(DST_IMG_PATH + DST_IMG_FOLDER[3] + fn + IMG_EXTENDER);
+        err_file.str(DST_IMG_PATH + DST_IMG_FOLDER[0] + fn + IMG_EXTENDER);
+
         Mat frame = imread(in_file.str(), IMREAD_UNCHANGED);
         /*
           * File checking
@@ -150,11 +230,14 @@ void setMouthData2(float _minMouthArea)
             cerr << " >> not found :"<<  in_file.str() << endl;
             return;
         }
+        // Find face
+        vector<Rect> faces;
+        detectFaces(frame, faces);
         /*
           * Fine mouth and drawing
         */
-        drawContour(frame, mouthland);
-        Mat mouth = frame(GetContourArea(mouthland));
+        drawContour(frame, faces, mouthland);//return contoured mouth
+        Mat mouth = frame(GetContourArea(mouthland));//resizeing the mouth image
         /*
           * messaging
         */
@@ -164,26 +247,35 @@ void setMouthData2(float _minMouthArea)
         /*
           * Output
         */
-        imwrite(contour_file.str(), mouth);
-        writeMouthXY(mouthland, false);
-        fn_list << fn << endl;
+        int chk = mouth.rows*mouth.cols;
+        if(chk >= _minMouthArea) {
+            imwrite(contour_file.str(), mouth);
+            writeMouthXY(mouthland, false);
+        }
+        else {//if (chk < _minMouthArea) {
+            // imshow("err2", mouth);
+            // waitKey();
+            cerr << " > err : not mouth" << endl;
+            imwrite(err_file.str(), mouth);
+        }
+        // imwrite(contour_file.str(), mouth);
+        // writeMouthXY(mouthland, false);
 
+        fn_list << fn << endl;
         /*
           * Test mouth XY location
         */
         // drawCircleOn(frame, mouthland);
-
         /*
           * Limit testcase
         */
         if (++cnt >= NUM_TEST_CASE && TEST_CASE_ON) break;
-
         /*
           * initializing
         */
         in_file.clear();in_file.str("");
         contour_file.clear();contour_file.str("");
-        loc_file.clear();loc_file.str("");
+        err_file.clear();err_file.str("");
     }
     mlm_ifs.close();
     fn_list.close();
@@ -193,48 +285,41 @@ void setMouthData2(float _minMouthArea)
 /*
   * module
 */
-void drawContour(Mat &_frame, vector <Point2f> &mouthland)
+void drawContour(Mat &_frame, vector<Rect>& _faces, vector <Point2f> &_mouthland)
 {
-    // Variable to store a video frame and its grayscale
-    Mat gray;
-    // Find face
-    vector<Rect> faces;
-    detectFaces(_frame, faces);
     uint target = 0;
-    if (faces.size() > 1) {
-        cout << " > multi face is detected.." << endl;
-        for (uint i = 1; i < faces.size(); ++i) {
-            target = faces[target].width < faces[i].width? i : target;
-        }
-    }
     // Variable for landmarks.
     // Landmarks for one face is a vector of points
     // There can be more than one face in the image. Hence, we
     // use a vector of vector of points.
     vector< vector<Point2f> > landmarks;
-    // Run landmark detector
-    bool success = facemark->fit(_frame, faces, landmarks);
-    if(success) {
-      // If successful, render the landmarks on\ the face
-        drawMouthContour(_frame, landmarks[target]);
-        for (int j = 0; j < landmarks[target].size(); ++j) {
-            if (landmarks[target].size() == NUM_LANDMARK) { mouthland.push_back(landmarks[target][j]);}
-            else { cerr << " > landmark is under uncompleted state." << endl;}
+    // bool success = facemark->fit(F_ROI, _faces, landmarks);
+    bool success = facemark->fit(_frame, _faces, landmarks);
+    //find the very image
+    if (landmarks.size() > 1) {
+        cout << " > multi landmarks is detected.." << endl;
+        for (int i = 0; i < _faces.size(); ++i) {
+            rectangle(_frame, _faces[i], Scalar(255, 0, 0), 1, 4);
+            target = _faces[i].width*_faces[i].height > _faces[target].width*_faces[target].height? i : target;
         }
-    } else {
-        cerr << " > lips detetion fail" << endl;
     }
-}
-//Mark circle from Point on 'image source'
-void drawCircleOn(Mat& _src, vector <Point2f> &_mouthland)
-{
-    int idx = _mouthland.size()-NUM_LANDMARK;
-    Mat dot_frame = _src.clone();
-    for (int i = START_LIPS_IDX; i <= END_LIPS_IDX; ++i) {
-        circle(dot_frame, _mouthland[idx+i], 3, Scalar(255, 200,0), FILLED);
+    // If successful, render the landmarks on\ the face
+    if(success) {
+            drawMouthContour(_frame, landmarks[target]);
+            for (int j = 0; j < landmarks[target].size(); ++j) {
+                if (landmarks[target].size() == NUM_LANDMARK) {
+                      _mouthland.push_back(landmarks[target][j]);
+                }
+                else {
+                    cerr << " > success but not landmark" << endl;
+                    imshow("err", _frame);
+                    waitKey();
+                }
+            }
     }
-    imshow("dot_frame", dot_frame);
-    waitKey();
+    else {
+       cerr << " > lips detetion fail" << endl;
+    }
 }
 //GetMouthFromFaces() : Extract mouth Image from face and Save it
 /*
@@ -285,6 +370,17 @@ vector <Mat> GetMouthFromFaces(Mat& img, vector<Rect_<int> > faces)
       }
       return res;
 }
+//Mark circle from Point on 'image source'
+void drawCircleOn(Mat& _src, vector <Point2f> &_mouthland)
+{
+    int idx = _mouthland.size()-NUM_LANDMARK;
+    Mat dot_frame = _src.clone();
+    for (int i = START_LIPS_IDX; i <= END_LIPS_IDX; ++i) {
+        circle(dot_frame, _mouthland[idx+i], 3, Scalar(255, 200,0), FILLED);
+    }
+    imshow("dot_frame", dot_frame);
+    waitKey();
+}
 //setMouthData2 - adjust images
 Rect GetContourArea(vector <Point2f> &_fl)
 {
@@ -324,66 +420,6 @@ void writeMouthXY(vector <Point2f> &_mouthland, bool _force)
         _mouthland.clear();
         mlm_ifs.close();
     }
-}
-//Calculate some of statistics of source images
-float calAVGMouth()
-{
-    ifstream ifs(SRC_IMG_PATH + SRC_IMG_FOLDER[0] + "trainval.txt");
-    ofstream ofs(TEXT_NAME[0]);
-    if (ifs.fail()) {
-        cerr << "The input file list is missgng" << endl;
-        return -1;
-    }
-    stringstream in_file;
-    string fn;
-    uint total = 0, left = 0, m_sum = 0 ;
-    float avgMA = 0;
-    while(ifs >> fn) {
-        in_file.str(SRC_IMG_PATH + SRC_IMG_FOLDER[1] + fn + IMG_EXTENDER);
-        Mat frame = imread(in_file.str(), IMREAD_UNCHANGED);
-
-        if (frame.empty()) {
-            cerr << " > img is missing" << endl;
-            cerr << " >> not found :" <<  in_file.str() << endl;
-            return -1;
-        }
-
-        vector<Rect_<int> > faces;
-        detectFaces(frame, faces);
-        //
-        vector<Mat> mouth = GetMouthFromFaces(frame, faces);
-        for (uint i=0; i<mouth.size(); ++i) {
-            uint ma = mouth[i].rows*mouth[i].cols;
-            m_sum += ma;//average
-            ofs << ma << endl;
-            total++;
-            left++;
-        }
-        //to avoid overflow
-        if (left % MAX_MOUTH_CNT == 0) {
-            cout << "# round(" << (total/MAX_MOUTH_CNT) << ")" << endl;
-            m_sum += avgMA*(total-MAX_MOUTH_CNT);
-            avgMA = total > 0? m_sum/total : total;
-            m_sum = left = 0;
-        }
-        in_file.clear();
-    }
-    ofs.close();
-    //avg
-    avgMA = total > 0? (m_sum + avgMA*(total-left))/total : 0;
-    //deviation
-    ifstream m_ifs(TEXT_NAME[0]);
-    cout << "> sample size :" << total << endl;
-    float dev = 0;
-    uint ma;
-    while (m_ifs >> ma) { dev += pow(avgMA-ma, 2);}
-    ifs.close();
-    dev /= total;
-    cout << "> mean :" << avgMA << endl;
-    cout << "> deviation :" << dev << endl;
-    cout << "> standard deviation :" << sqrt(dev) << endl;
-    cout << "> diff :" << (sqrt(dev)/avgMA) * 100 << endl;
-    return avgMA-sqrt(dev);
 }
 //find face from source image
 void detectFaces(Mat& img, vector<Rect_<int> >& faces)
