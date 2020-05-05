@@ -34,6 +34,7 @@ Ptr<Facemark> facemark = FacemarkLBF::create();// Create an instance of Facemark
 /* drive */
 void setMouthData1(float);
 void setMouthData2(float);
+void genMouthData3();
 /* module */
 float calAVGMouth(uint);
 vector <Mat> GetMouthFromFaces(Mat&, vector<Rect_<int> >);
@@ -68,9 +69,9 @@ int main(int argc, char** argv)
       // setMouthData1(3000);//by File
       //
       // avgMouthArea = calAVGMouth(2);
-      cout << argc << ", " << argv[0] << endl;
 
-      setMouthData2(avgMouthArea);//by File
+      // setMouthData2(avgMouthArea);//by File
+      genMouthData3();
       //
       return 0;
 }
@@ -292,6 +293,68 @@ void setMouthData2(float _minMouthArea)
     fn_list.close();
     //write rest of 'mouthland'
     writeMouthXY(mouthland, true);
+}
+void biasXY(vector <Point>& src)
+{
+    const uint unit_x = 75, unit_y = 35;
+    const uint max_col = 30;
+    static uint col = 0, row = 0;
+    //평행이동
+    float bias_x = src[0].x > col*max_col? (src[0].x - col*max_col) : -(col*max_col - src[0].x),
+          bias_y = src[0].y > row*unit_y/2? (src[0].y - row*unit_y/2) : -(row*unit_y/2 - src[0].y);
+    for (int i = 0; i < src.size(); ++i) {
+        src[i].x -= bias_x;
+        src[i].y -= bias_y;
+    }
+    //
+    if (col++ > max_col) { col = 0; row++;}
+}
+void genMouthData3()
+{
+      cout << "# genMouthData3" << endl;
+      ifstream m_ifs(DST_IMG_PATH + DST_IMG_FOLDER[3] + TEXT_NAME[1]);
+      if (m_ifs.fail()) {
+          cerr << " > no mouth xy data file " << endl;
+          return;
+      }
+      uint cnt = 0;
+      string xy;
+      //3 : 4 = 1920 : 2560
+      Mat base(2250, 2590, CV_8UC1, Scalar(0, 0 ,0));
+      // imshow("base", base);
+      // waitKey();
+      vector <Point> inner_mouth;
+      float x, y;
+      float max_x = 0, max_y = 0;
+      while (m_ifs >> xy) {
+          // cout << xy << endl;
+          if (cnt++ > 11) {
+              //
+              // cout << "round(" << inner_mouth.size()/8 << ")" << endl;
+              stringstream ss;
+              size_t spilit_loc = xy.find(',');
+              // cout << xy.substr(0, spilit_loc) << ", " << xy.substr(spilit_loc+1, xy.size()-spilit_loc) << endl;
+              //입술 내곽선
+              ss.str(xy.substr(0, spilit_loc));
+              ss >> x; ss.clear();ss.str("");
+              //
+              ss.str(xy.substr(spilit_loc+1, xy.size()-spilit_loc));
+              ss >> y; ss.clear();ss.str("");
+              //
+              inner_mouth.push_back(Point(x, y));
+              if (cnt % NUM_LIPS_MARKS == 0) {
+                  biasXY(inner_mouth);
+                  // Mat m = base.clone();
+                  polylines(base , inner_mouth, true, COLOR_WHITE, 2, 16);
+                  imshow("base", base);
+                  waitKey();
+                  cnt = 0;
+                  inner_mouth.clear();
+              }
+              // cout << " > max_x :" << max_x << ", max_y :" << max_y << endl;
+              if (inner_mouth.size()/8 > 5) { break;}
+          }
+      }
 }
 /*
   * module
