@@ -23,6 +23,7 @@ using namespace cv::face;
 #define TEST_CASE_ON false
 #define MAX_MOUTH_CNT 100
 #define NUM_LANDMARK 68
+#define NUM_LIPS_MARKS 20
 #define START_LIPS_IDX 48
 #define END_LIPS_IDX 67
 //분류기
@@ -62,11 +63,13 @@ int main(int argc, char** argv)
         cout << "File missing" << endl;
         return 1;
       }
-      float avgMouthArea = 2000;
+      float avgMouthArea = 2300;
       // float avgMouthArea = calAVGMouth(1);
       // setMouthData1(3000);//by File
       //
       // avgMouthArea = calAVGMouth(2);
+      cout << argc << ", " << argv[0] << endl;
+
       setMouthData2(avgMouthArea);//by File
       //
       return 0;
@@ -211,15 +214,16 @@ void setMouthData2(float _minMouthArea)
     stringstream in_file, contour_file, err_file;
     string fn;
     uint cnt = 0;
-    ofstream mlm_ifs(TEXT_NAME[1], ofstream::trunc);
+    ofstream mlm_ifs(DST_IMG_PATH + DST_IMG_FOLDER[3] + TEXT_NAME[1], ofstream::trunc);
     ofstream fn_list(DST_IMG_PATH + DST_IMG_FOLDER[3] + TEXT_NAME[2]);
+
     while(ifs >> fn) {
         /*
           * Declaration
         */
         in_file.str(SRC_IMG_PATH + SRC_IMG_FOLDER[1] + fn + IMG_EXTENDER);
-        contour_file.str(DST_IMG_PATH + DST_IMG_FOLDER[3] + fn + IMG_EXTENDER);
-        err_file.str(DST_IMG_PATH + DST_IMG_FOLDER[0] + fn + IMG_EXTENDER);
+        contour_file.str(DST_IMG_PATH + DST_IMG_FOLDER[3] + fn);
+        err_file.str(DST_IMG_PATH + DST_IMG_FOLDER[0] + fn);
 
         Mat frame = imread(in_file.str(), IMREAD_UNCHANGED);
         /*
@@ -231,41 +235,48 @@ void setMouthData2(float _minMouthArea)
             return;
         }
         // Find face
+        vector<Point2f> faceland;
         vector<Rect> faces;
         detectFaces(frame, faces);
         /*
           * Fine mouth and drawing
         */
-        drawContour(frame, faces, mouthland);//return contoured mouth
-        Mat mouth = frame(GetContourArea(mouthland));//resizeing the mouth image
+        drawContour(frame, faces, faceland);//return contoured mouth
+        if (!faceland.empty()) {
+            Mat mouth = frame(GetContourArea(faceland));//resizeing the mouth image
+            /*
+              * Test mouth XY location
+              drawCircleOn(frame, faceland);
+            */
+            /*
+              * Output
+            */
+            int chk = mouth.rows*mouth.cols;
+            if(chk >= _minMouthArea) {
+                imwrite(contour_file.str()+IMG_EXTENDER, mouth);
+                mouthland.insert(mouthland.end(), faceland.begin()+START_LIPS_IDX, faceland.begin()+END_LIPS_IDX+1);
+                // bool a = true;
+                // int idx = mouthland.size()-NUM_LIPS_MARKS;
+                // for (int i = 0; i< NUM_LIPS_MARKS; ++i) {
+                //     a &= faceland[START_LIPS_IDX+i] == mouthland[idx+i];
+                // }
+                // cout << a << endl;
+                writeMouthXY(mouthland, false);
+                fn_list << fn << endl;
+            }
+            else {//if (chk < _minMouthArea) {
+                // imshow("err2", mouth);
+                // waitKey();
+                cerr << " > err : not mouth" << endl;
+                imwrite(err_file.str()+IMG_EXTENDER, mouth);
+                err_file << fn << endl;
+            }
+        }
         /*
-          * messaging
+        * messaging
         */
         cout << " # s:" << cnt+1;
-        cout << ", m:" << mouthland.size()/NUM_LANDMARK << endl;
-
-        /*
-          * Output
-        */
-        int chk = mouth.rows*mouth.cols;
-        if(chk >= _minMouthArea) {
-            imwrite(contour_file.str(), mouth);
-            writeMouthXY(mouthland, false);
-        }
-        else {//if (chk < _minMouthArea) {
-            // imshow("err2", mouth);
-            // waitKey();
-            cerr << " > err : not mouth" << endl;
-            imwrite(err_file.str(), mouth);
-        }
-        // imwrite(contour_file.str(), mouth);
-        // writeMouthXY(mouthland, false);
-
-        fn_list << fn << endl;
-        /*
-          * Test mouth XY location
-        */
-        // drawCircleOn(frame, mouthland);
+        cout << ", m:" << mouthland.size()/NUM_LIPS_MARKS << endl;
         /*
           * Limit testcase
         */
@@ -273,9 +284,9 @@ void setMouthData2(float _minMouthArea)
         /*
           * initializing
         */
-        in_file.clear();in_file.str("");
-        contour_file.clear();contour_file.str("");
-        err_file.clear();err_file.str("");
+        in_file.clear();in_file.str("");//input
+        contour_file.clear();contour_file.str("");//valid output
+        err_file.clear();err_file.str("");//unvalid output
     }
     mlm_ifs.close();
     fn_list.close();
@@ -285,7 +296,7 @@ void setMouthData2(float _minMouthArea)
 /*
   * module
 */
-void drawContour(Mat &_frame, vector<Rect>& _faces, vector <Point2f> &_mouthland)
+void drawContour(Mat &_frame, vector<Rect>& _faces, vector <Point2f> &_fl)
 {
     uint target = 0;
     // Variable for landmarks.
@@ -299,22 +310,24 @@ void drawContour(Mat &_frame, vector<Rect>& _faces, vector <Point2f> &_mouthland
     if (landmarks.size() > 1) {
         cout << " > multi landmarks is detected.." << endl;
         for (int i = 0; i < _faces.size(); ++i) {
-            rectangle(_frame, _faces[i], Scalar(255, 0, 0), 1, 4);
-            target = _faces[i].width*_faces[i].height > _faces[target].width*_faces[target].height? i : target;
+            // rectangle(_frame, _faces[i], Scalar(255, 0, 0), 1, 4);
+            //assume : 'the real face has the max width*height'
+            target = _faces[i].width*_faces[i].height > _faces[target].width*_faces[target].height?
+                    i : target;
         }
     }
     // If successful, render the landmarks on\ the face
     if(success) {
             drawMouthContour(_frame, landmarks[target]);
-            for (int j = 0; j < landmarks[target].size(); ++j) {
-                if (landmarks[target].size() == NUM_LANDMARK) {
-                      _mouthland.push_back(landmarks[target][j]);
-                }
-                else {
-                    cerr << " > success but not landmark" << endl;
-                    imshow("err", _frame);
-                    waitKey();
-                }
+            if (landmarks[target].size() == NUM_LANDMARK) {
+                _fl.insert(_fl.begin(), landmarks[target].begin(), landmarks[target].end());
+                // for (int j = 0; j < NUM_LANDMARK; ++j)
+                //     _fl.push_back(landmarks[target][j]);
+            }
+            else {
+              cerr << " > success but not landmark" << endl;
+              // imshow("err", _frame);
+              // waitKey();
             }
     }
     else {
@@ -376,10 +389,8 @@ void drawCircleOn(Mat& _src, vector <Point2f> &_mouthland)
     int idx = _mouthland.size()-NUM_LANDMARK;
     Mat dot_frame = _src.clone();
     for (int i = START_LIPS_IDX; i <= END_LIPS_IDX; ++i) {
-        circle(dot_frame, _mouthland[idx+i], 3, Scalar(255, 200,0), FILLED);
+        circle(dot_frame, _mouthland[idx+i], 2, Scalar(255, 200,0), FILLED);
     }
-    imshow("dot_frame", dot_frame);
-    waitKey();
 }
 //setMouthData2 - adjust images
 Rect GetContourArea(vector <Point2f> &_fl)
@@ -408,12 +419,12 @@ Rect GetAdjRect(const Mat& _src, const Rect& _dst, const unsigned int _rest)
 //Save point of landmark
 void writeMouthXY(vector <Point2f> &_mouthland, bool _force)
 {
-    if (_force || _mouthland.size()/NUM_LANDMARK >= MAX_MOUTH_CNT) {
+    if (_force || _mouthland.size()/NUM_LIPS_MARKS >= MAX_MOUTH_CNT) {
         cout << " > mouth_xy is reporting.." << endl;
         ofstream mlm_ifs(DST_IMG_PATH + DST_IMG_FOLDER[3] + TEXT_NAME[1], ofstream::app);
-        for (int i = 0; i < _mouthland.size()/NUM_LANDMARK; ++i) {
-            int idx = NUM_LANDMARK*i;
-            for (int j = START_LIPS_IDX; j <= END_LIPS_IDX; ++j) {
+        for (int i = 0; i < _mouthland.size()/NUM_LIPS_MARKS; ++i) {
+            int idx = NUM_LIPS_MARKS*i;
+            for (int j = 0; j < NUM_LIPS_MARKS; ++j) {
                 mlm_ifs << _mouthland[idx+j].x << "," << _mouthland[idx+j].y << endl;
             }
         }
