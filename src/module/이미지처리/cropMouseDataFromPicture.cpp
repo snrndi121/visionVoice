@@ -294,20 +294,28 @@ void setMouthData2(float _minMouthArea)
     //write rest of 'mouthland'
     writeMouthXY(mouthland, true);
 }
+//biasing a mouth'xy
 void biasXY(vector <Point>& src)
 {
-    const uint unit_x = 75, unit_y = 35;
-    const uint max_col = 30;
-    static uint col = 0, row = 0;
-    //평행이동
-    float bias_x = src[0].x > col*max_col? (src[0].x - col*max_col) : -(col*max_col - src[0].x),
-          bias_y = src[0].y > row*unit_y/2? (src[0].y - row*unit_y/2) : -(row*unit_y/2 - src[0].y);
-    for (int i = 0; i < src.size(); ++i) {
+    //기준값(const), 진행값(static)
+    const uint max_width=75, max_height=35, max_cnt=30;
+    static uint cnt = 0; static float standard_row=max_height/2,standard_col=0;
+    //bias_x,y 계산
+    //bias 값이
+    float bias_x = src[0].x - standard_col, bias_y = src[0].y - standard_row;
+    //조정
+    for (int i=0; i<src.size(); ++i) {
         src[i].x -= bias_x;
         src[i].y -= bias_y;
     }
-    //
-    if (col++ > max_col) { col = 0; row++;}
+    //진행값 조정
+    standard_col+= max_width;
+    //진행값 임계치 체크
+    if (++cnt > max_cnt) {
+        cnt=0;
+        standard_row+= max_height;
+        standard_col=0;
+    }
 }
 void genMouthData3()
 {
