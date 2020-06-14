@@ -328,7 +328,7 @@ void genMouthData3()
       uint cnt = 0;
       string xy;
       //3 : 4 = 1920 : 2560
-      Mat base(2250, 2590, CV_8UC1, Scalar(0, 0 ,0));
+      Mat base(2590, 2250, CV_8UC1, Scalar(0, 0 ,0));
       // imshow("base", base);
       // waitKey();
       vector <Point> inner_mouth;
@@ -352,10 +352,8 @@ void genMouthData3()
               inner_mouth.push_back(Point(x, y));
               if (cnt % NUM_LIPS_MARKS == 0) {
                   biasXY(inner_mouth);
-                  // Mat m = base.clone();
                   polylines(base , inner_mouth, true, COLOR_WHITE, 2, 16);
-                  imshow("base", base);
-                  waitKey();
+                  // waitKey();
                   cnt = 0;
                   inner_mouth.clear();
               }
@@ -363,6 +361,9 @@ void genMouthData3()
               if (inner_mouth.size()/8 > 5) { break;}
           }
       }
+      // imshow("base", base);
+      // waitKey();
+      imwrite("./merger_res.bmp", base);
 }
 /*
   * module

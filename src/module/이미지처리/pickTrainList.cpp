@@ -6,7 +6,7 @@
 
 using namespace std;
 
-const string in_trainlist_path="/media/uki408/Seagate Expansion Drive1/Mouth/sharp/train.txt";
+const string in_trainlist_path="/media/uki408/Seagate Expansion Drive2/개인문서/기타/VOCmouth/PNGImages/img_list.txt";
 const string out_trainlist_path="/media/uki408/Seagate Expansion Drive1/vocmouth/ImageSets/Main/trainval.txt";
 const string out_testlist_path="/media/uki408/Seagate Expansion Drive1/vocmouth/ImageSets/Main/test.txt";
 int main()
